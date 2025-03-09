@@ -42,7 +42,7 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <div className="flex flex-col items-center justify-center h-screen space-y-4">
-        <h1 className="text-2xl font-bold">Welcome, {session?.user?.email}</h1>
+        <h1 className="text-2xl font-bold">Welcome!, {session?.user?.email}</h1>
         <p>Status: {status}</p>
       </div>
     </div>
