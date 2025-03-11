@@ -4,14 +4,6 @@ import { supabase } from "@/lib/supabaseClient";
 import { JWT } from "next-auth/jwt";
 import { Session } from "next-auth";
 
-interface UserSession {
-  user: {
-    id: string;
-    email?: string;
-    role?: string;
-  };
-}
-
 const authOptions = {
   providers: [
     CredentialsProvider({
