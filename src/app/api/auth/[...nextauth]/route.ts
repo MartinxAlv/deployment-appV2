@@ -1,6 +1,16 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { supabase } from "@/lib/supabaseClient";
+import { JWT } from "next-auth/jwt";
+import { Session } from "next-auth";
+
+interface UserSession {
+  user: {
+    id: string;
+    email?: string;
+    role?: string;
+  };
+}
 
 const authOptions = {
   providers: [
@@ -58,13 +68,17 @@ const authOptions = {
   },
 
   callbacks: {
-    async session({ session, token }: { session: any; token: any }) {
+    async session({ session, token }: { session: Session; token: JWT }) {
       console.log("Session Callback - Token Data:", token);
-      session.user.id = token.id;
-      session.user.role = token.role; // Ensure role is stored in session
+      
+      if (session.user) {
+        session.user.id = token.id as string;
+        session.user.role = token.role as string; // Ensure role is stored in session
+      }
+      
       return session;
     },
-    async jwt({ token, user }: { token: any; user?: any }) {
+    async jwt({ token, user }: { token: JWT; user?: { id: string; role?: string } }) {
       console.log("JWT Callback - User Data:", user);
       if (user) {
         token.id = user.id;

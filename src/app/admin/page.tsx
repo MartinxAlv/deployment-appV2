@@ -1,42 +1,47 @@
 "use client";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import AddUserForm from "./components/AddUserForm"; // Adjust path as needed
+import { useEffect, useState, useCallback } from "react";
+import AddUserForm from "./components/AddUserForm";
+import { User } from "../types/users";
 
 export default function AdminDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
+
+  // Use useCallback to define fetchUserRole
+  const fetchUserRole = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/admin/getUsers`);
+      const text = await response.text();
+      console.log("API Raw Response:", text);
+      const users = JSON.parse(text);
+      
+      if (!Array.isArray(users)) {
+        console.error("Invalid API response (not an array):", users);
+        return;
+      }
+      
+      const currentUser = users.find((user: User) => user.email === session?.user?.email);
+      if (!currentUser || currentUser.role !== "admin") {
+        console.warn("Unauthorized access attempt:", currentUser);
+        router.push("/dashboard");
+      }
+      
+      setUsers(users);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+    }
+  }, [router, session?.user?.email]);
 
   // ✅ Redirect if not admin
   useEffect(() => {
     if (status === "loading") return;
     if (!session?.user) return;
     fetchUserRole();
-  }, [status, session]);
-
-  async function fetchUserRole() {
-    try {
-      const response = await fetch(`/api/admin/getUsers`);
-      const text = await response.text();
-      console.log("API Raw Response:", text);
-      const users = JSON.parse(text);
-      if (!Array.isArray(users)) {
-        console.error("Invalid API response (not an array):", users);
-        return;
-      }
-      const currentUser = users.find((user: any) => user.email === session?.user?.email);
-      if (!currentUser || currentUser.role !== "admin") {
-        console.warn("Unauthorized access attempt:", currentUser);
-        router.push("/dashboard");
-      }
-      setUsers(users);
-    } catch (error) {
-      console.error("Error fetching users:", error);
-    }
-  }
+  }, [status, session, fetchUserRole]);  // Include fetchUserRole in the dependency array
 
   const toggleAddForm = () => {
     setShowAddForm(!showAddForm);

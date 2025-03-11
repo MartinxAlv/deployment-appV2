@@ -67,7 +67,7 @@ export default function AddUserForm() {
   };
 
   // Handle role change explicitly
-  const handleRoleChange = (e: { target: { value: any; }; }) => {
+  const handleRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedRole = e.target.value;
     console.log("Role changed to:", selectedRole);
     setRole(selectedRole);

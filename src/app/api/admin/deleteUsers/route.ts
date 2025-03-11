@@ -43,7 +43,8 @@ export async function DELETE(request: Request) {
     
     // Verify both deletions were successful
     const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(userId);
-    const { data: dbUser, error: checkError } = await supabaseAdmin
+    // Removed unused variable checkError - simply don't capture it as a variable
+    const { data: dbUser } = await supabaseAdmin
       .from("users")
       .select()
       .eq('user_id', userId)
