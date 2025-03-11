@@ -3,6 +3,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
 import AddUserForm from "./components/AddUserForm";
+import EditUserForm from "./components/EditUserForm";
 import { User } from "../types/users";
 import { useTheme } from "@/components/ThemeProvider";
 
@@ -11,6 +12,7 @@ export default function AdminDashboard() {
   const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
   const { themeObject, theme } = useTheme();
 
   // Use useCallback to define fetchUserRole
@@ -47,6 +49,14 @@ export default function AdminDashboard() {
 
   const toggleAddForm = () => {
     setShowAddForm(!showAddForm);
+  };
+
+  const handleEdit = (user: User) => {
+    setEditingUser(user);
+  };
+
+  const closeEditForm = () => {
+    setEditingUser(null);
   };
 
   if (status === "loading") return <p>Loading...</p>;
@@ -95,6 +105,9 @@ export default function AdminDashboard() {
       {/* Add User Form - Shown/hidden based on state */}
       {showAddForm && <AddUserForm />}
       
+      {/* Edit User Modal */}
+      {editingUser && <EditUserForm user={editingUser} onClose={closeEditForm} />}
+      
       {/* User Table */}
       <table 
         className="w-full mt-4 border-collapse" 
@@ -105,6 +118,7 @@ export default function AdminDashboard() {
         <thead>
           <tr style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#f3f4f6' }}>
             <th className="px-4 py-2" style={{ borderColor: themeObject.border, color: themeObject.text }}>Email</th>
+            <th className="px-4 py-2" style={{ borderColor: themeObject.border, color: themeObject.text }}>Name</th>
             <th className="px-4 py-2" style={{ borderColor: themeObject.border, color: themeObject.text }}>Role</th>
             <th className="px-4 py-2" style={{ borderColor: themeObject.border, color: themeObject.text }}>Actions</th>
           </tr>
@@ -113,15 +127,31 @@ export default function AdminDashboard() {
           {users.map((user) => (
             <tr key={user.user_id}>
               <td className="px-4 py-2" style={{ borderColor: themeObject.border, color: themeObject.text }}>{user.email}</td>
+              <td className="px-4 py-2" style={{ borderColor: themeObject.border, color: themeObject.text }}>{user.name}</td>
               <td className="px-4 py-2" style={{ borderColor: themeObject.border, color: themeObject.text }}>{user.role}</td>
               <td className="px-4 py-2" style={{ borderColor: themeObject.border, color: themeObject.text }}>
-                <DeleteUserButton userId={user.user_id} />
+                <div className="flex space-x-2">
+                  <EditButton user={user} onEdit={handleEdit} />
+                  <DeleteUserButton userId={user.user_id} />
+                </div>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
     </div>
+  );
+}
+
+// Edit Button Component
+function EditButton({ user, onEdit }: { user: User; onEdit: (user: User) => void }) {
+  return (
+    <button
+      onClick={() => onEdit(user)}
+      className="bg-blue-500 text-white px-3 py-1 rounded-md hover:bg-blue-600 transition"
+    >
+      Edit
+    </button>
   );
 }
 

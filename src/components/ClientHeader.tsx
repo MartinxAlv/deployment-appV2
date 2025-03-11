@@ -13,6 +13,7 @@ const ClientHeader: React.FC = () => {
   // Only show elements when user is authenticated and on specific pages
   const isAuthenticated = status === "authenticated";
   const isDashboard = pathname === "/dashboard";
+  const isAdmin = pathname === "/admin";
 
   return (
     <div className="absolute top-4 right-4 flex items-center space-x-4">
@@ -34,8 +35,8 @@ const ClientHeader: React.FC = () => {
       {/* Theme Toggle Button - Always visible */}
       <ThemeToggleSwitch />
 
-      {/* Logout Button - Only visible on dashboard */}
-      {isAuthenticated && isDashboard && <LogoutButton />}
+      {/* Logout Button - Visible on dashboard and admin page */}
+      {isAuthenticated && (isDashboard || isAdmin) && <LogoutButton />}
     </div>
   );
 };
