@@ -145,13 +145,19 @@ function DeleteUserButton({ userId }: { userId: string }) {
       });
 
       const result = await response.json();
-      if (!response.ok) {
-        console.error("Error deleting user: " + result.error);
-        alert("Error deleting user: " + result.error);
-      } else {
+      
+      // Consider the operation successful even with a partial deletion
+      if (result.success || response.ok) {
+        console.log("User deleted with result:", result);
         alert("User deleted successfully!");
         window.location.reload();
+        return;
       }
+      
+      // Only show error for complete failures
+      console.error("Error deleting user:", result.error || "Unknown error");
+      alert("Error deleting user: " + (result.error || "Unknown error"));
+      
     } catch (error) {
       console.error("Delete request failed:", error);
       alert("Server error");
@@ -166,7 +172,7 @@ function DeleteUserButton({ userId }: { userId: string }) {
       className="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition"
       disabled={isLoading}
     >
-      Delete
+      {isLoading ? "Deleting..." : "Delete"}
     </button>
   );
 }

@@ -19,7 +19,8 @@ body {
 
 /* Dark mode styles using Tailwind's dark mode */
 .dark {
-  @apply text-white bg-gray-900;
+  color: #ffffff;
+  background-color: #1f2937;
 }
 
 /* Add these styles to ensure consistent styling across the app */
