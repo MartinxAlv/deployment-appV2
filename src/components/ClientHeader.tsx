@@ -8,12 +8,16 @@ import { useSession } from "next-auth/react";
 const ClientHeader: React.FC = () => {
   const pathname = usePathname();
   const router = useRouter();
-  const { data: session } = useSession(); // ✅ Hook moved inside component
+  const { data: session, status } = useSession();
+
+  // Only show elements when user is authenticated and on specific pages
+  const isAuthenticated = status === "authenticated";
+  const isDashboard = pathname === "/dashboard";
 
   return (
     <div className="absolute top-4 right-4 flex items-center space-x-4">
-      {/* 🔹 Show Admin Button only for Admins */}
-      {session?.user?.role === "admin" && (
+      {/* Admin Button - Only show on dashboard for admin users */}
+      {isAuthenticated && isDashboard && session?.user?.role === "admin" && (
         <button
           onClick={() => router.push("/admin")}
           className="px-4 py-2 rounded-md font-medium transition"
@@ -27,11 +31,11 @@ const ClientHeader: React.FC = () => {
         </button>
       )}
 
-      {/* 🔹 Theme Toggle Button */}
+      {/* Theme Toggle Button - Always visible */}
       <ThemeToggleSwitch />
 
-      {/* 🔹 Show Logout Button only on Dashboard */}
-      {pathname === "/dashboard" && <LogoutButton />}
+      {/* Logout Button - Only visible on dashboard */}
+      {isAuthenticated && isDashboard && <LogoutButton />}
     </div>
   );
 };

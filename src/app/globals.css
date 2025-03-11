@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-[data-theme="light"] {
+:root {
   --background: #f8fafc;
   --foreground: #1e293b;
 }
@@ -10,7 +10,27 @@
   --foreground: #e5e7eb;
 }
 
+html,
 body {
   background-color: var(--background);
-  color: var(--text);
+  color: var(--foreground);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Dark mode styles using Tailwind's dark mode */
+.dark {
+  @apply text-white bg-gray-900;
+}
+
+/* Add these styles to ensure consistent styling across the app */
+.admin-panel .bg-white,
+.login-panel .bg-white {
+  background-color: var(--background) !important;
+  color: var(--foreground) !important;
+}
+
+input, select, textarea {
+  background-color: var(--background) !important;
+  color: var(--foreground) !important;
+  border-color: var(--foreground) !important;
 }

@@ -17,7 +17,10 @@ export const ThemeToggleSwitch: React.FC = () => {
 
   return (
     <button
-      onClick={toggleTheme}
+      onClick={() => {
+        console.log("Toggle button clicked, current theme:", theme);
+        toggleTheme();
+      }}
       className="px-4 py-2 rounded-md font-medium transition"
       style={{
         backgroundColor: theme === "light" ? "#f3f4f6" : "#1f2937", // Light gray in light mode, dark gray in dark mode

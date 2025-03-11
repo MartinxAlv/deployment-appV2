@@ -4,12 +4,14 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
 import AddUserForm from "./components/AddUserForm";
 import { User } from "../types/users";
+import { useTheme } from "@/components/ThemeProvider";
 
 export default function AdminDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
+  const { themeObject, theme } = useTheme();
 
   // Use useCallback to define fetchUserRole
   const fetchUserRole = useCallback(async () => {
@@ -41,7 +43,7 @@ export default function AdminDashboard() {
     if (status === "loading") return;
     if (!session?.user) return;
     fetchUserRole();
-  }, [status, session, fetchUserRole]);  // Include fetchUserRole in the dependency array
+  }, [status, session, fetchUserRole]);
 
   const toggleAddForm = () => {
     setShowAddForm(!showAddForm);
@@ -50,12 +52,37 @@ export default function AdminDashboard() {
   if (status === "loading") return <p>Loading...</p>;
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Admin Dashboard</h1>
+    <div 
+      className={`admin-panel p-6 pt-16 min-h-screen ${theme === 'dark' ? 'dark' : ''}`}
+      style={{ 
+        backgroundColor: themeObject.background, 
+        color: themeObject.text 
+      }}
+    >
+      {/* Back to Dashboard Button - Fixed position to avoid conflicts */}
+      <button
+        onClick={() => router.push('/dashboard')}
+        className="fixed top-4 left-4 px-4 py-2 rounded-md font-medium transition z-10"
+        style={{
+          backgroundColor: "#4ade80", // Green background
+          color: "#ffffff", // White text
+          border: "1px solid #16a34a", // Darker green border
+        }}
+      >
+        Back to Dashboard
+      </button>
+      
+      <h1 className="text-2xl font-bold mb-6 mt-8 text-center">Admin Dashboard</h1>
       
       {/* Action Bar - Contains the Add User button */}
-      <div className="bg-gray-100 p-4 rounded-md mb-4 flex justify-between items-center">
-        <p className="text-gray-700">Manage system users</p>
+      <div 
+        className="p-4 rounded-md mb-4 flex justify-between items-center"
+        style={{ 
+          backgroundColor: theme === 'dark' ? '#1f2937' : '#f3f4f6',
+          color: themeObject.text
+        }}
+      >
+        <p className="text-gray-700" style={{ color: themeObject.text }}>Manage system users</p>
         <button
           onClick={toggleAddForm}
           className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition flex items-center"
@@ -69,20 +96,25 @@ export default function AdminDashboard() {
       {showAddForm && <AddUserForm />}
       
       {/* User Table */}
-      <table className="w-full mt-4 border-collapse border border-gray-300">
+      <table 
+        className="w-full mt-4 border-collapse" 
+        style={{ 
+          borderColor: themeObject.border 
+        }}
+      >
         <thead>
-          <tr className="bg-gray-200">
-            <th className="border border-gray-300 px-4 py-2">Email</th>
-            <th className="border border-gray-300 px-4 py-2">Role</th>
-            <th className="border border-gray-300 px-4 py-2">Actions</th>
+          <tr style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#f3f4f6' }}>
+            <th className="px-4 py-2" style={{ borderColor: themeObject.border, color: themeObject.text }}>Email</th>
+            <th className="px-4 py-2" style={{ borderColor: themeObject.border, color: themeObject.text }}>Role</th>
+            <th className="px-4 py-2" style={{ borderColor: themeObject.border, color: themeObject.text }}>Actions</th>
           </tr>
         </thead>
         <tbody>
           {users.map((user) => (
             <tr key={user.user_id}>
-              <td className="border border-gray-300 px-4 py-2">{user.email}</td>
-              <td className="border border-gray-300 px-4 py-2">{user.role}</td>
-              <td className="border border-gray-300 px-4 py-2">
+              <td className="px-4 py-2" style={{ borderColor: themeObject.border, color: themeObject.text }}>{user.email}</td>
+              <td className="px-4 py-2" style={{ borderColor: themeObject.border, color: themeObject.text }}>{user.role}</td>
+              <td className="px-4 py-2" style={{ borderColor: themeObject.border, color: themeObject.text }}>
                 <DeleteUserButton userId={user.user_id} />
               </td>
             </tr>

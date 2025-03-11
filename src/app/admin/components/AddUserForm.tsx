@@ -1,5 +1,6 @@
 "use client";
 import { useState } from 'react';
+import { useTheme } from "@/components/ThemeProvider";
 
 export default function AddUserForm() {
   const [email, setEmail] = useState('');
@@ -9,6 +10,7 @@ export default function AddUserForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const { themeObject, theme } = useTheme();
 
   const handleSubmit = async (e: { preventDefault: () => void; }) => {
     e.preventDefault();
@@ -73,8 +75,20 @@ export default function AddUserForm() {
     setRole(selectedRole);
   };
 
+  const formBgColor = theme === 'dark' ? themeObject.cardBackground : 'white';
+  const inputBgColor = theme === 'dark' ? themeObject.inputBackground : 'white';
+  const borderColor = themeObject.border;
+  const textColor = themeObject.text;
+
   return (
-    <div className="mt-4 mb-6 p-4 border border-gray-300 rounded-md bg-white">
+    <div 
+      className="mt-4 mb-6 p-4 border rounded-md"
+      style={{
+        backgroundColor: formBgColor,
+        color: textColor,
+        borderColor: borderColor
+      }}
+    >
       <h2 className="text-xl font-bold mb-4">Add New User</h2>
       
       {error && (
@@ -85,42 +99,58 @@ export default function AddUserForm() {
       
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium mb-1">Email:</label>
+          <label className="block text-sm font-medium mb-1" style={{ color: textColor }}>Email:</label>
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            className="w-full px-3 py-2 border rounded-md"
+            style={{ 
+              backgroundColor: inputBgColor,
+              color: textColor,
+              borderColor: borderColor
+            }}
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">Name:</label>
+          <label className="block text-sm font-medium mb-1" style={{ color: textColor }}>Name:</label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            className="w-full px-3 py-2 border rounded-md"
             placeholder="Full name"
+            style={{ 
+              backgroundColor: inputBgColor,
+              color: textColor,
+              borderColor: borderColor
+            }}
           />
         </div>
         
         <div>
-          <label className="block text-sm font-medium mb-1">Password:</label>
+          <label className="block text-sm font-medium mb-1" style={{ color: textColor }}>Password:</label>
           <div className="relative">
             <input
               type={showPassword ? "text" : "password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md pr-10"
+              className="w-full px-3 py-2 border rounded-md pr-10"
+              style={{ 
+                backgroundColor: inputBgColor,
+                color: textColor,
+                borderColor: borderColor
+              }}
             />
             <button 
               type="button"
               onClick={togglePasswordVisibility}
               className="absolute inset-y-0 right-0 px-3 flex items-center text-gray-600 hover:text-gray-800"
+              style={{ color: textColor }}
             >
               {showPassword ? (
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -138,11 +168,16 @@ export default function AddUserForm() {
         </div>
         
         <div>
-          <label className="block text-sm font-medium mb-1">Role:</label>
+          <label className="block text-sm font-medium mb-1" style={{ color: textColor }}>Role:</label>
           <select
             value={role}
             onChange={handleRoleChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            className="w-full px-3 py-2 border rounded-md"
+            style={{ 
+              backgroundColor: inputBgColor,
+              color: textColor,
+              borderColor: borderColor
+            }}
           >
             <option value="technician">Technician</option>
             <option value="admin">Admin</option>
