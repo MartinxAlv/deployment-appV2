@@ -16,7 +16,7 @@ export interface DeploymentData {
   createdBy?: string;
   createdAt?: string;
   // Add any other fields as needed
-  [key: string]: any; // Allow for dynamic properties from spreadsheet
+  [key: string]: string | undefined; // Allow for dynamic properties from spreadsheet but with proper typing
 }
 
 // Service account credentials should be stored as environment variables
@@ -85,11 +85,11 @@ export class DeploymentSheetService {
       }
       
       // First row contains headers
-      const headers = rows[0];
+      const headers = rows[0] as string[];
       
       // Convert the rows to objects with the headers as keys
       const deployments = rows.slice(1).map(row => {
-        const deployment: Record<string, any> = {};
+        const deployment: Record<string, string | undefined> = {};
         headers.forEach((header, index) => {
           deployment[header] = row[index] || '';
         });
@@ -107,7 +107,7 @@ export class DeploymentSheetService {
   /**
    * Update a specific cell in the sheet
    */
-  async updateCell(row: number, column: number, value: any): Promise<void> {
+  async updateCell(row: number, column: number, value: string | number | boolean): Promise<void> {
     try {
       const sheets = await getSheetsInstance();
       
@@ -159,9 +159,9 @@ export class DeploymentSheetService {
       const sheetRowIndex = rowIndex + 2;
       
       // Create a new row with updated values
-      const newRow: any[] = [];
+      const newRow: (string | number | boolean)[] = [];
       headers.forEach((header) => {
-        const key = header as keyof DeploymentData;
+        const key = header as string;
         // Use the new value from deployment if available, otherwise use ''
         newRow.push(deployment[key] !== undefined ? deployment[key] : '');
       });
@@ -198,9 +198,9 @@ export class DeploymentSheetService {
       const headers = headerResponse.data.values?.[0] || [];
       
       // Create a new row with the deployment data
-      const newRow: any[] = [];
+      const newRow: (string | number | boolean)[] = [];
       headers.forEach((header) => {
-        const key = header as keyof DeploymentData;
+        const key = header as string;
         newRow.push(deployment[key] !== undefined ? deployment[key] : '');
       });
       
