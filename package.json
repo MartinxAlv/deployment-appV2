@@ -11,6 +11,8 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
     "ajv": "^8.17.1",
+    "google-auth-library": "^9.15.1",
+    "googleapis": "^146.0.0",
     "next": "15.2.1",
     "next-auth": "^4.24.11",
     "react": "^19.0.0",

@@ -13,6 +13,7 @@ const ClientHeader: React.FC = () => {
   // Only show elements when user is authenticated and on specific pages
   const isAuthenticated = status === "authenticated";
   const isDashboard = pathname === "/dashboard";
+  const isDeploymentsPage = pathname === "/deployments";
 
   return (
     <div className="absolute top-4 right-4 flex items-center space-x-4">
@@ -30,12 +31,42 @@ const ClientHeader: React.FC = () => {
           Admin Panel
         </button>
       )}
+      
+      {/* Deployments Button - Show for authenticated users except on deployments page */}
+      {isAuthenticated && !isDeploymentsPage && (
+        <button
+          onClick={() => router.push("/deployments")}
+          className="px-4 py-2 rounded-md font-medium transition"
+          style={{
+            backgroundColor: "#10b981", // Green background
+            color: "#ffffff", // White text
+            border: "1px solid #059669", // Darker green border
+          }}
+        >
+          Deployments
+        </button>
+      )}
+      
+      {/* Dashboard Button - Only show on pages other than dashboard */}
+      {isAuthenticated && !isDashboard && !isDeploymentsPage && (
+        <button
+          onClick={() => router.push("/dashboard")}
+          className="px-4 py-2 rounded-md font-medium transition"
+          style={{
+            backgroundColor: "#f59e0b", // Amber background
+            color: "#ffffff", // White text
+            border: "1px solid #d97706", // Darker amber border
+          }}
+        >
+          Dashboard
+        </button>
+      )}
 
       {/* Theme Toggle Button - Always visible */}
       <ThemeToggleSwitch />
 
-      {/* Logout Button - Only visible on dashboard */}
-      {isAuthenticated && isDashboard && <LogoutButton />}
+      {/* Logout Button - Only visible when authenticated */}
+      {isAuthenticated && <LogoutButton />}
     </div>
   );
 };
