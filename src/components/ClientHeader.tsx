@@ -1,3 +1,4 @@
+// src/components/ClientHeader.tsx
 "use client";
 
 import { ThemeToggleSwitch } from "./ThemeToggleSwitch";
@@ -14,6 +15,7 @@ const ClientHeader: React.FC = () => {
   const isAuthenticated = status === "authenticated";
   const isDashboard = pathname === "/dashboard";
   const isDeploymentsPage = pathname === "/deployments";
+  const isLoginPage = pathname === "/login";
 
   return (
     <div className="absolute top-4 right-4 flex items-center space-x-4">
