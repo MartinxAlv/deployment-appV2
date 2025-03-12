@@ -10,6 +10,7 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showForgotMessage, setShowForgotMessage] = useState(false);
   const router = useRouter();
   const { themeObject } = useTheme();
 
@@ -31,6 +32,10 @@ export default function Login() {
     }
   };
 
+  const handleForgotPassword = () => {
+    setShowForgotMessage(true);
+  };
+
   return (
     <div
       className="flex min-h-screen items-center justify-center px-4"
@@ -45,6 +50,32 @@ export default function Login() {
         }}
       >
         <h2 className="text-2xl font-extrabold text-center mb-6">Login</h2>
+        
+        {/* Password Reset Message */}
+        {showForgotMessage && (
+          <div
+            className="p-4 rounded-md mb-6"
+            style={{
+              backgroundColor: themeObject.background === '#000000' ? '#1e3a5f' : '#e0f2fe',
+              color: themeObject.background === '#000000' ? '#93c5fd' : '#1e40af',
+            }}
+          >
+            <h3 className="font-bold mb-2">Forgot Your Password?</h3>
+            <p className="text-sm">
+              Please contact an administrator to reset your password. They will help you regain access to your account.
+            </p>
+            <button
+              className="text-sm underline mt-2"
+              onClick={() => setShowForgotMessage(false)}
+              style={{
+                color: themeObject.background === '#000000' ? '#bfdbfe' : '#2563eb',
+              }}
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+        
         <form onSubmit={handleLogin} className="space-y-6">
           {/* Email Input */}
           <div>
@@ -84,6 +115,17 @@ export default function Login() {
                 borderColor: themeObject.border,
               }}
             />
+          </div>
+
+          {/* Forgot Password Link */}
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={handleForgotPassword}
+              className="text-blue-500 hover:text-blue-700 text-sm transition"
+            >
+              Forgot your password?
+            </button>
           </div>
 
           {/* Submit Button */}

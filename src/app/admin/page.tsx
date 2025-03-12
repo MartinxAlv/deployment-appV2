@@ -1,9 +1,11 @@
+// src/app/admin/page.tsx
 "use client";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
 import AddUserForm from "./components/AddUserForm";
 import EditUserForm from "./components/EditUserForm";
+import AdminPasswordReset from "@/components/AdminPasswordReset";
 import { User } from "../types/users";
 import { useTheme } from "@/components/ThemeProvider";
 
@@ -13,6 +15,7 @@ export default function AdminDashboard() {
   const [users, setUsers] = useState<User[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [resetPasswordUser, setResetPasswordUser] = useState<User | null>(null);
   const { themeObject, theme } = useTheme();
 
   // Use useCallback to define fetchUserRole
@@ -57,6 +60,14 @@ export default function AdminDashboard() {
 
   const closeEditForm = () => {
     setEditingUser(null);
+  };
+
+  const handleResetPassword = (user: User) => {
+    setResetPasswordUser(user);
+  };
+
+  const closePasswordReset = () => {
+    setResetPasswordUser(null);
   };
 
   if (status === "loading") return <p>Loading...</p>;
@@ -108,6 +119,9 @@ export default function AdminDashboard() {
       {/* Edit User Modal */}
       {editingUser && <EditUserForm user={editingUser} onClose={closeEditForm} />}
       
+      {/* Password Reset Modal */}
+      {resetPasswordUser && <AdminPasswordReset user={resetPasswordUser} onClose={closePasswordReset} />}
+      
       {/* User Table */}
       <table 
         className="w-full mt-4 border-collapse" 
@@ -132,6 +146,7 @@ export default function AdminDashboard() {
               <td className="px-4 py-2" style={{ borderColor: themeObject.border, color: themeObject.text }}>
                 <div className="flex space-x-2">
                   <EditButton user={user} onEdit={handleEdit} />
+                  <ResetPasswordButton user={user} onResetPassword={handleResetPassword} />
                   <DeleteUserButton userId={user.user_id} />
                 </div>
               </td>
@@ -151,6 +166,18 @@ function EditButton({ user, onEdit }: { user: User; onEdit: (user: User) => void
       className="bg-blue-500 text-white px-3 py-1 rounded-md hover:bg-blue-600 transition"
     >
       Edit
+    </button>
+  );
+}
+
+// Reset Password Button Component
+function ResetPasswordButton({ user, onResetPassword }: { user: User; onResetPassword: (user: User) => void }) {
+  return (
+    <button
+      onClick={() => onResetPassword(user)}
+      className="bg-amber-500 text-white px-3 py-1 rounded-md hover:bg-amber-600 transition"
+    >
+      Reset Password
     </button>
   );
 }
