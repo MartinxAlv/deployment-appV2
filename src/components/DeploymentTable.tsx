@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { DeploymentData } from "@/lib/googleSheetsService";
 import { useTheme } from "@/components/ThemeProvider";
 
@@ -14,7 +14,8 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
   const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editFormData, setEditFormData] = useState<DeploymentData>({});
-  const { themeObject } = useTheme();
+  const { themeObject, theme } = useTheme();
+  const tableContainerRef = useRef<HTMLDivElement>(null);
 
   // Fetch deployments on component mount
   useEffect(() => {
@@ -105,6 +106,11 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
     
     setEditingId(newDeployment.id || null);
     setEditFormData(newDeployment);
+    
+    // Scroll to the top of the table to see the editing form
+    if (tableContainerRef.current) {
+      tableContainerRef.current.scrollTop = 0;
+    }
   };
 
   // Save a new deployment
@@ -175,8 +181,11 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
 
   const columns = getColumnHeaders();
 
+  // Calculate sticky left column width for actions
+  const actionColumnWidth = "100px";
+
   return (
-    <div className="w-full overflow-x-auto">
+    <div className="flex flex-col">
       {/* Error banner if there's an error */}
       {error && (
         <div className="bg-red-100 text-red-700 p-3 mb-4 rounded">
@@ -197,102 +206,151 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
         </div>
       )}
 
-      {/* Deployment table */}
-      <table 
-        className="min-w-full divide-y divide-gray-200" 
+      {/* Table container with horizontal scrolling */}
+      <div 
+        ref={tableContainerRef}
+        className="w-full overflow-auto border rounded-lg shadow-sm"
         style={{ 
+          maxHeight: "70vh",
           backgroundColor: themeObject.cardBackground,
-          color: themeObject.text,
           borderColor: themeObject.border
         }}
       >
-        <thead>
-          <tr>
-            {columns.map((column) => (
-              <th
-                key={column}
-                className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider"
-                style={{ backgroundColor: themeObject.cardBackground, color: themeObject.text }}
-              >
-                {column}
-              </th>
-            ))}
-            {allowEdit && <th className="px-6 py-3">Actions</th>}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-200">
-          {deployments.map((deployment) => (
-            <tr key={deployment.id}>
-              {editingId === deployment.id ? (
-                // Edit mode row
-                <>
-                  {columns.map((column) => (
-                    <td key={column} className="px-6 py-4 whitespace-nowrap">
-                      <input
-                        type="text"
-                        name={column}
-                        value={editFormData[column as keyof DeploymentData] || ""}
-                        onChange={handleInputChange}
-                        className="border rounded px-2 py-1 w-full"
-                        style={{ 
-                          backgroundColor: themeObject.inputBackground,
-                          color: themeObject.text,
-                          borderColor: themeObject.border
-                        }}
-                      />
-                    </td>
-                  ))}
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button
-                      onClick={deployment.id?.startsWith('new-') ? handleSaveNew : handleSave}
-                      className="text-green-600 hover:text-green-900 mr-2"
-                      disabled={loading}
-                    >
-                      Save
-                    </button>
-                    <button
-                      onClick={handleCancel}
-                      className="text-red-600 hover:text-red-900"
-                      disabled={loading}
-                    >
-                      Cancel
-                    </button>
-                  </td>
-                </>
-              ) : (
-                // View mode row
-                <>
-                  {columns.map((column) => (
-                    <td 
-                      key={column} 
-                      className="px-6 py-4 whitespace-nowrap"
-                      style={{ color: themeObject.text }}
-                    >
-                      {deployment[column as keyof DeploymentData] || ""}
-                    </td>
-                  ))}
-                  {allowEdit && (
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button
-                        onClick={() => handleEdit(deployment)}
-                        className="text-blue-600 hover:text-blue-900"
-                        disabled={loading || editingId !== null}
-                      >
-                        Edit
-                      </button>
-                    </td>
-                  )}
-                </>
+        {/* Deployment table */}
+        <table 
+          className="min-w-full border-collapse table-fixed" 
+          style={{ color: themeObject.text }}
+        >
+          <thead className="sticky top-0 z-10" style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#f8fafc' }}>
+            <tr>
+              {columns.map((column) => (
+                <th
+                  key={column}
+                  className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-r"
+                  style={{ 
+                    borderColor: themeObject.border,
+                    minWidth: column === 'id' ? '80px' : column === 'notes' ? '300px' : '150px'
+                  }}
+                >
+                  {column}
+                </th>
+              ))}
+              {allowEdit && (
+                <th 
+                  className="px-6 py-3 text-center border-b sticky right-0"
+                  style={{ 
+                    borderColor: themeObject.border,
+                    backgroundColor: theme === 'dark' ? '#1f2937' : '#f8fafc',
+                    width: actionColumnWidth,
+                    minWidth: actionColumnWidth
+                  }}
+                >
+                  Actions
+                </th>
               )}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {deployments.map((deployment) => (
+              <tr 
+                key={deployment.id}
+                className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                style={{ backgroundColor: theme === 'dark' ? '#1e293b' : 'white' }}
+              >
+                {editingId === deployment.id ? (
+                  // Edit mode row
+                  <>
+                    {columns.map((column) => (
+                      <td 
+                        key={column} 
+                        className="px-6 py-4 whitespace-nowrap border-b border-r"
+                        style={{ borderColor: themeObject.border }}
+                      >
+                        <input
+                          type="text"
+                          name={column}
+                          value={editFormData[column as keyof DeploymentData] || ""}
+                          onChange={handleInputChange}
+                          className="border rounded px-2 py-1 w-full"
+                          style={{ 
+                            backgroundColor: themeObject.inputBackground,
+                            color: themeObject.text,
+                            borderColor: themeObject.border
+                          }}
+                        />
+                      </td>
+                    ))}
+                    <td 
+                      className="px-6 py-4 text-center border-b sticky right-0"
+                      style={{ 
+                        borderColor: themeObject.border,
+                        backgroundColor: theme === 'dark' ? '#1e293b' : 'white',
+                        width: actionColumnWidth
+                      }}
+                    >
+                      <div className="flex flex-col space-y-2">
+                        <button
+                          onClick={deployment.id?.startsWith('new-') ? handleSaveNew : handleSave}
+                          className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition"
+                          disabled={loading}
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={handleCancel}
+                          className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition"
+                          disabled={loading}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </td>
+                  </>
+                ) : (
+                  // View mode row
+                  <>
+                    {columns.map((column) => (
+                      <td 
+                        key={column} 
+                        className="px-6 py-4 border-b border-r"
+                        style={{ 
+                          borderColor: themeObject.border,
+                          whiteSpace: column === 'notes' ? 'normal' : 'nowrap'
+                        }}
+                      >
+                        {deployment[column as keyof DeploymentData] || ""}
+                      </td>
+                    ))}
+                    {allowEdit && (
+                      <td 
+                        className="px-6 py-4 text-center border-b sticky right-0"
+                        style={{ 
+                          borderColor: themeObject.border,
+                          backgroundColor: theme === 'dark' ? '#1e293b' : 'white',
+                          width: actionColumnWidth
+                        }}
+                      >
+                        <button
+                          onClick={() => handleEdit(deployment)}
+                          className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition"
+                          disabled={loading || editingId !== null}
+                        >
+                          Edit
+                        </button>
+                      </td>
+                    )}
+                  </>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
 
-      {/* Show message if no deployments */}
-      {deployments.length === 0 && (
-        <div className="text-center py-8">No deployment data available.</div>
-      )}
+        {/* Show message if no deployments */}
+        {deployments.length === 0 && (
+          <div className="text-center py-8">No deployment data available.</div>
+        )}
+      </div>
     </div>
   );
 }
