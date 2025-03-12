@@ -19,13 +19,40 @@ export interface DeploymentData {
   [key: string]: string | undefined; // Allow for dynamic properties from spreadsheet but with proper typing
 }
 
+/**
+ * Format the private key correctly regardless of how it's stored in env vars
+ */
+const formatPrivateKey = (key?: string): string => {
+  if (!key) return '';
+  
+  // If the key doesn't start with the BEGIN marker, it needs formatting
+  if (!key.includes('-----BEGIN PRIVATE KEY-----')) {
+    // Strip any surrounding quotes that might have been added
+    const strippedKey = key.replace(/^['"]|['"]$/g, '');
+    
+    // Replace escaped newlines with actual newlines if present
+    if (strippedKey.includes('\\n')) {
+      return strippedKey.replace(/\\n/g, '\n');
+    }
+    
+    // If it's a flat string without formatting, add proper PEM format
+    if (!strippedKey.includes('\n')) {
+      return `-----BEGIN PRIVATE KEY-----\n${strippedKey}\n-----END PRIVATE KEY-----`;
+    }
+  }
+  
+  // If it already has the BEGIN marker, just make sure escaped newlines are handled
+  return key.replace(/\\n/g, '\n');
+};
+
 // Service account credentials should be stored as environment variables
 // and loaded here in a secure way
 const getServiceAccountCredentials = () => {
   try {
+    const privateKey = process.env.GOOGLE_PRIVATE_KEY;
     return {
       client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'), // Handle escaped newlines
+      private_key: formatPrivateKey(privateKey),
       project_id: process.env.GOOGLE_PROJECT_ID,
     };
   } catch (error) {
@@ -37,6 +64,14 @@ const getServiceAccountCredentials = () => {
 // Create and authorize a JWT client
 const getAuthClient = () => {
   const credentials = getServiceAccountCredentials();
+  
+  if (!credentials.private_key) {
+    throw new Error('Private key is missing or improperly formatted');
+  }
+  
+  if (!credentials.client_email) {
+    throw new Error('Service account email is missing');
+  }
   
   return new JWT({
     email: credentials.client_email,
