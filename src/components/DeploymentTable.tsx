@@ -428,11 +428,11 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
           </thead>
           <tbody className="divide-y divide-gray-200">
           {deployments.map((deployment, index) => (
-              <tr 
-                key={deployment.id || `deployment-${index}`}
-                className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                style={{ backgroundColor: theme === 'dark' ? '#1e293b' : 'white' }}
-              >
+  <tr 
+    key={deployment.id || `deployment-${index}`}
+    className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+    style={{ backgroundColor: theme === 'dark' ? '#1e293b' : 'white' }}
+  >
                 {editingId === deployment.id ? (
                   // Edit mode row
                   <>

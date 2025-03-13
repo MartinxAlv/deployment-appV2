@@ -14,7 +14,7 @@ export default function Login() {
   const [showForgotMessage, setShowForgotMessage] = useState(false);
   const router = useRouter();
   const { themeObject } = useTheme();
-  const { data: session, status } = useSession();
+  const { status } = useSession();
 
   // Redirect to dashboard if already authenticated
   useEffect(() => {
