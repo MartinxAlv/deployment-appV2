@@ -14,7 +14,6 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editingDeployment, setEditingDeployment] = useState<DeploymentData | null>(null);
-  const [isNewDeployment, setIsNewDeployment] = useState(false);
   const { themeObject, theme } = useTheme();
   const tableContainerRef = useRef<HTMLDivElement>(null);
   
@@ -208,13 +207,11 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
     }
     
     setEditingDeployment(editData);
-    setIsNewDeployment(false);
   };
 
   // Close the edit modal
   const handleCloseModal = () => {
     setEditingDeployment(null);
-    setIsNewDeployment(false);
   };
 
   // Save edited deployment
@@ -224,11 +221,8 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
       
       console.log("Saving deployment data:", deploymentToSave);
       
-      // Use different endpoints for new vs. existing deployments
-      const method = isNewDeployment ? "POST" : "PUT";
-      
       const response = await fetch("/api/deployments", {
-        method,
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
@@ -242,7 +236,6 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
 
       // Reset editing state
       setEditingDeployment(null);
-      setIsNewDeployment(false);
       setError(null);
       
       // Refresh data to ensure we have the latest changes
@@ -254,27 +247,6 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
     } finally {
       setLoading(false);
     }
-  };
-
-  // Create a new deployment
-  const handleAdd = () => {
-    // Generate a proper Deployment ID for the new deployment
-    const today = new Date();
-    const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
-    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-    const deploymentId = `DEP-${dateStr}-${randomSuffix}`;
-    
-    // Create a new empty form with proper IDs
-    const newDeployment: DeploymentData = {
-      id: deploymentId, // Use the same ID for both fields
-      "Deployment ID": deploymentId,
-      "Deployment Date": today.toISOString().split('T')[0],
-      "Status": 'Pending'
-      // Add other default values as needed
-    };
-    
-    setEditingDeployment(newDeployment);
-    setIsNewDeployment(true);
   };
 
   // If loading, show loading indicator
@@ -332,17 +304,6 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
       {/* Action buttons row */}
       <div className="flex flex-wrap justify-between items-center mb-4 gap-2">
         <div className="flex gap-2">
-          {/* Add new deployment button */}
-          {allowEdit && (
-            <button
-              onClick={handleAdd}
-              disabled={loading || editingDeployment !== null}
-              className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 transition"
-            >
-              Add New Deployment
-            </button>
-          )}
-          
           {/* Refresh button */}
           <button
             onClick={() => fetchDeployments(false)}
@@ -533,7 +494,6 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
           deployment={editingDeployment}
           onClose={handleCloseModal}
           onSave={handleSaveDeployment}
-          isNew={isNewDeployment}
         />
       )}
     </div>

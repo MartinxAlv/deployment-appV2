@@ -9,14 +9,12 @@ interface EditDeploymentModalProps {
   deployment: DeploymentData;
   onClose: () => void;
   onSave: (deployment: DeploymentData) => Promise<void>;
-  isNew?: boolean;
 }
 
 export default function EditDeploymentModal({ 
   deployment, 
   onClose, 
-  onSave,
-  isNew = false
+  onSave
 }: EditDeploymentModalProps) {
   const [formData, setFormData] = useState<DeploymentData>({ ...deployment });
   const [isLoading, setIsLoading] = useState(false);
@@ -122,7 +120,7 @@ export default function EditDeploymentModal({
       >
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold">
-            {isNew ? "Add New Deployment" : "Edit Deployment"}
+            Edit Deployment
           </h2>
           <button
             onClick={onClose}
@@ -211,7 +209,7 @@ export default function EditDeploymentModal({
                         color: themeObject.text,
                         borderColor: themeObject.border,
                       }}
-                      readOnly={field === "Deployment ID" && !isNew} // Make Deployment ID readonly if editing
+                      readOnly={field === "Deployment ID"} // Make Deployment ID readonly when editing
                     />
                   )}
                 </div>
@@ -238,7 +236,7 @@ export default function EditDeploymentModal({
               disabled={isLoading}
               className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition"
             >
-              {isLoading ? (isNew ? "Creating..." : "Saving...") : (isNew ? "Create Deployment" : "Save Changes")}
+              {isLoading ? "Saving..." : "Save Changes"}
             </button>
           </div>
         </form>
