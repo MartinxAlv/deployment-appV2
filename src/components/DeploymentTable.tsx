@@ -20,6 +20,7 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
   // Column visibility state
   const [allColumns, setAllColumns] = useState<string[]>([]);
   const [visibleColumns, setVisibleColumns] = useState<string[]>([]);
+  const [columnVisibilityMap, setColumnVisibilityMap] = useState<Record<string, boolean>>({});
   const [showColumnFilter, setShowColumnFilter] = useState(false);
   
   // Refresh state
@@ -57,6 +58,13 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
             col !== 'id' && col !== 'notes' && col !== 'createdBy' && col !== 'createdAt'
           );
           setVisibleColumns(defaultVisibleColumns);
+          
+          // Initialize visibility map
+          const visibilityMap: Record<string, boolean> = {};
+          columns.forEach(col => {
+            visibilityMap[col] = defaultVisibleColumns.includes(col);
+          });
+          setColumnVisibilityMap(visibilityMap);
         }
       }
       
@@ -109,13 +117,19 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
 
   // Toggle column visibility
   const toggleColumnVisibility = (column: string) => {
-    setVisibleColumns(prev => {
-      if (prev.includes(column)) {
-        return prev.filter(c => c !== column);
-      } else {
-        return [...prev, column];
+    // Update visibility map
+    setColumnVisibilityMap(prev => ({
+      ...prev,
+      [column]: !prev[column]
+    }));
+    
+    // Update visible columns based on the fixed order from allColumns
+    setVisibleColumns(allColumns.filter(col => {
+      if (col === column) {
+        return !columnVisibilityMap[column]; // Toggle the clicked column
       }
-    });
+      return columnVisibilityMap[col]; // Keep others the same
+    }));
   };
 
   // Reset column visibility to default
@@ -123,7 +137,21 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
     const defaultVisibleColumns = allColumns.filter(col => 
       col !== 'id' && col !== 'notes' && col !== 'createdBy' && col !== 'createdAt'
     );
+    
+    // Update visibility map
+    const newVisibilityMap: Record<string, boolean> = {};
+    allColumns.forEach(col => {
+      newVisibilityMap[col] = defaultVisibleColumns.includes(col);
+    });
+    setColumnVisibilityMap(newVisibilityMap);
+    
+    // Update visible columns
     setVisibleColumns(defaultVisibleColumns);
+  };
+
+  // Get display columns in the correct order
+  const getOrderedVisibleColumns = () => {
+    return allColumns.filter(col => columnVisibilityMap[col]);
   };
 
   // Start editing a deployment
@@ -246,6 +274,9 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
   // Calculate sticky left column width for actions
   const actionColumnWidth = "100px";
 
+  // Get ordered visible columns
+  const orderedVisibleColumns = getOrderedVisibleColumns();
+
   return (
     <div className="flex flex-col">
       {/* Error banner if there's an error */}
@@ -331,7 +362,7 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
               <div key={column} className="inline-flex items-center">
                 <label className="flex items-center space-x-2 cursor-pointer px-3 py-1 rounded-md"
                   style={{
-                    backgroundColor: visibleColumns.includes(column) 
+                    backgroundColor: columnVisibilityMap[column] 
                       ? (theme === 'dark' ? '#1E40AF' : '#DBEAFE') 
                       : (theme === 'dark' ? '#374151' : '#F3F4F6'),
                     color: themeObject.text
@@ -339,7 +370,7 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
                 >
                   <input
                     type="checkbox"
-                    checked={visibleColumns.includes(column)}
+                    checked={columnVisibilityMap[column]}
                     onChange={() => toggleColumnVisibility(column)}
                     className="form-checkbox h-4 w-4"
                   />
@@ -368,7 +399,7 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
         >
           <thead className="sticky top-0 z-10" style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#f8fafc' }}>
             <tr>
-              {visibleColumns.map((column) => (
+              {orderedVisibleColumns.map((column) => (
                 <th
                   key={column}
                   className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-r"
@@ -405,7 +436,7 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
                 {editingId === deployment.id ? (
                   // Edit mode row
                   <>
-                    {visibleColumns.map((column) => (
+                    {orderedVisibleColumns.map((column) => (
                       <td 
                         key={column} 
                         className="px-6 py-4 whitespace-nowrap border-b border-r"
@@ -454,7 +485,7 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
                 ) : (
                   // View mode row
                   <>
-                    {visibleColumns.map((column) => (
+                    {orderedVisibleColumns.map((column) => (
                       <td 
                         key={column} 
                         className="px-6 py-4 border-b border-r"
