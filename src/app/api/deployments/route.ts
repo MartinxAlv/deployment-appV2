@@ -81,7 +81,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Error adding deployment:', error);
     return NextResponse.json(
-      { error: 'Failed to add deployment' }, 
+      { error: `Failed to add deployment: ${error instanceof Error ? error.message : 'Unknown error'}` }, 
       { status: 500 }
     );
   }
@@ -113,20 +113,33 @@ export async function PUT(request: Request) {
       deploymentData.id = deploymentData["Deployment ID"];
     }
     
-    console.log(`Updating deployment with ID: ${deploymentData.id}`);
+    console.log(`Updating deployment with data:`, deploymentData);
     
-    // Update the deployment
-    await deploymentSheetService.updateDeployment(deploymentData);
-    
-    return NextResponse.json({ 
-      message: 'Deployment updated successfully',
-      deploymentId: deploymentData.id || deploymentData["Deployment ID"]
-    });
+    try {
+      // Update the deployment
+      await deploymentSheetService.updateDeployment(deploymentData);
+      
+      return NextResponse.json({ 
+        message: 'Deployment updated successfully',
+        deploymentId: deploymentData.id || deploymentData["Deployment ID"]
+      });
+    } catch (updateError) {
+      // If the deployment wasn't found, return a more specific error
+      if (updateError instanceof Error && 
+          updateError.message.includes("not found in the spreadsheet")) {
+        return NextResponse.json({ 
+          error: `Deployment with ID "${deploymentData.id}" not found in the spreadsheet. Please verify the ID is correct.`
+        }, { status: 404 });
+      }
+      
+      // For other errors, throw to catch block
+      throw updateError;
+    }
     
   } catch (error) {
     console.error('Error updating deployment:', error);
     return NextResponse.json(
-      { error: `Failed to update deployment: ${error instanceof Error ? error.message : String(error)}` }, 
+      { error: `Failed to update deployment: ${error instanceof Error ? error.message : 'Unknown error'}` }, 
       { status: 500 }
     );
   }

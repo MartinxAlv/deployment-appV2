@@ -120,14 +120,20 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
       });
     });
     
-    // Convert to array and ensure 'id' is first if it exists
+    // Convert to array and ensure certain critical columns appear first
+    const priorityColumns = ["Deployment ID", "Status", "Assigned To", "Location"];
     const headers = Array.from(allKeys);
-    if (headers.includes('id')) {
-      headers.splice(headers.indexOf('id'), 1);
-      headers.unshift('id');
-    }
     
-    return headers;
+    // Remove priority columns from original order
+    priorityColumns.forEach(col => {
+      const index = headers.indexOf(col);
+      if (index !== -1) {
+        headers.splice(index, 1);
+      }
+    });
+    
+    // Add priority columns at the beginning
+    return [...priorityColumns.filter(col => allKeys.has(col)), ...headers];
   };
 
   // Toggle column visibility
@@ -189,22 +195,41 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
     // Make sure we have a proper id to track this deployment
     const editId = deployment.id || deployment["Deployment ID"] || `dep-${Date.now()}`;
     
+    // Create a deep copy to avoid reference issues
+    const editData = { ...deployment };
+    
     // If the ID is missing, but we have Deployment ID, use that instead
-    if (!deployment.id && deployment["Deployment ID"]) {
-      deployment.id = deployment["Deployment ID"];
+    if (!editData.id && editData["Deployment ID"]) {
+      editData.id = editData["Deployment ID"];
+    }
+    
+    // Make sure Deployment ID is preserved in both places
+    if (editData.id && !editData["Deployment ID"]) {
+      editData["Deployment ID"] = editData.id;
     }
     
     setEditingId(editId);
-    setEditFormData({ ...deployment });
+    setEditFormData(editData);
   };
 
   // Handle input changes in edit form
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setEditFormData({
-      ...editFormData,
-      [name]: value,
-    });
+    
+    // Special handling for ID fields to keep them in sync
+    if (name === "id" || name === "Deployment ID") {
+      setEditFormData(prev => ({
+        ...prev,
+        [name]: value,
+        // If we're updating id, also update Deployment ID and vice versa
+        ...(name === "id" ? { "Deployment ID": value } : { id: value })
+      }));
+    } else {
+      setEditFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
   // Save edited deployment
@@ -212,19 +237,27 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
     try {
       setLoading(true);
       
-      // Make sure the ID is still properly set
-      if (!editFormData.id && editFormData["Deployment ID"]) {
-        editFormData.id = editFormData["Deployment ID"];
+      // Create a copy of the form data to ensure we don't mutate state directly
+      const deploymentToSave = { ...editFormData };
+      
+      // Make sure the Deployment ID is preserved
+      if (!deploymentToSave["Deployment ID"] && deploymentToSave.id) {
+        deploymentToSave["Deployment ID"] = deploymentToSave.id;
       }
       
-      console.log("Saving deployment data:", editFormData);
+      // If id is missing but Deployment ID exists, set id
+      if (!deploymentToSave.id && deploymentToSave["Deployment ID"]) {
+        deploymentToSave.id = deploymentToSave["Deployment ID"];
+      }
+      
+      console.log("Saving deployment data:", deploymentToSave);
       
       const response = await fetch("/api/deployments", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(editFormData),
+        body: JSON.stringify(deploymentToSave),
       });
 
       if (!response.ok) {
@@ -232,17 +265,7 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
         throw new Error(`Error ${response.status}: ${errorText}`);
       }
 
-      // Update local state with the edited deployment
-      setDeployments(
-        deployments.map((d) => {
-          // Match by either id or Deployment ID
-          if (d.id === editFormData.id || d["Deployment ID"] === editFormData["Deployment ID"]) {
-            return editFormData;
-          }
-          return d;
-        })
-      );
-      
+      // Reset editing state
       setEditingId(null);
       setError(null);
       
@@ -253,9 +276,6 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
       console.error("Error updating deployment:", err);
     } finally {
       setLoading(false);
-      // Add these debug logs here
-      console.log("Available columns:", allColumns);
-      console.log("Visible columns:", visibleColumns);
     }
   };
 
@@ -274,8 +294,8 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
     
     // Create a new empty form with proper IDs
     const newDeployment: DeploymentData = {
-      id: `new-${Date.now()}`, // Temporary ID for UI purposes
-      "Deployment ID": deploymentId, // Actual ID for the spreadsheet
+      id: deploymentId, // Use the same ID for both fields
+      "Deployment ID": deploymentId,
       "Deployment Date": today.toISOString().split('T')[0],
       "Status": 'Pending'
       // Add other default values as needed
@@ -295,15 +315,23 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
     try {
       setLoading(true);
       
+      // Create a copy of the form data
+      const deploymentToSave = { ...editFormData };
+      
       // Make sure Deployment ID is set before saving
-      if (!editFormData["Deployment ID"]) {
+      if (!deploymentToSave["Deployment ID"]) {
         const today = new Date();
         const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
         const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-        editFormData["Deployment ID"] = `DEP-${dateStr}-${randomSuffix}`;
+        deploymentToSave["Deployment ID"] = `DEP-${dateStr}-${randomSuffix}`;
       }
       
-      console.log("Saving new deployment data:", editFormData);
+      // Ensure id is set to match Deployment ID
+      if (deploymentToSave["Deployment ID"] && !deploymentToSave.id) {
+        deploymentToSave.id = deploymentToSave["Deployment ID"];
+      }
+      
+      console.log("Saving new deployment data:", deploymentToSave);
       
       // For new deployments, use POST method
       const response = await fetch("/api/deployments", {
@@ -311,7 +339,7 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(editFormData),
+        body: JSON.stringify(deploymentToSave),
       });
 
       if (!response.ok) {
@@ -357,7 +385,7 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
       case 'id':
       case 'Deployment ID':
       case 'Unique ID':
-        return '120px';
+        return '200px'; // Make this wider to ensure it's fully visible
       case 'Deployment Notes':
       case 'Technician Notes':
         return '300px';
