@@ -427,9 +427,9 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {deployments.map((deployment) => (
+          {deployments.map((deployment, index) => (
               <tr 
-                key={deployment.id}
+                key={deployment.id || `deployment-${index}`}
                 className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                 style={{ backgroundColor: theme === 'dark' ? '#1e293b' : 'white' }}
               >
