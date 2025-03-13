@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { DeploymentData } from "@/lib/googleSheetsService";
 import { useTheme } from "@/components/ThemeProvider";
+import EditDeploymentModal from "@/components/EditDeploymentModal";
 
 interface DeploymentTableProps {
   allowEdit?: boolean;
@@ -12,8 +13,8 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
   const [deployments, setDeployments] = useState<DeploymentData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editFormData, setEditFormData] = useState<DeploymentData>({});
+  const [editingDeployment, setEditingDeployment] = useState<DeploymentData | null>(null);
+  const [isNewDeployment, setIsNewDeployment] = useState(false);
   const { themeObject, theme } = useTheme();
   const tableContainerRef = useRef<HTMLDivElement>(null);
   
@@ -192,8 +193,6 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
   // Start editing a deployment
   const handleEdit = (deployment: DeploymentData) => {
     console.log("Editing deployment:", deployment);
-    // Make sure we have a proper id to track this deployment
-    const editId = deployment.id || deployment["Deployment ID"] || `dep-${Date.now()}`;
     
     // Create a deep copy to avoid reference issues
     const editData = { ...deployment };
@@ -208,52 +207,28 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
       editData["Deployment ID"] = editData.id;
     }
     
-    setEditingId(editId);
-    setEditFormData(editData);
+    setEditingDeployment(editData);
+    setIsNewDeployment(false);
   };
 
-  // Handle input changes in edit form
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    
-    // Special handling for ID fields to keep them in sync
-    if (name === "id" || name === "Deployment ID") {
-      setEditFormData(prev => ({
-        ...prev,
-        [name]: value,
-        // If we're updating id, also update Deployment ID and vice versa
-        ...(name === "id" ? { "Deployment ID": value } : { id: value })
-      }));
-    } else {
-      setEditFormData(prev => ({
-        ...prev,
-        [name]: value
-      }));
-    }
+  // Close the edit modal
+  const handleCloseModal = () => {
+    setEditingDeployment(null);
+    setIsNewDeployment(false);
   };
 
   // Save edited deployment
-  const handleSave = async () => {
+  const handleSaveDeployment = async (deploymentToSave: DeploymentData) => {
     try {
       setLoading(true);
       
-      // Create a copy of the form data to ensure we don't mutate state directly
-      const deploymentToSave = { ...editFormData };
-      
-      // Make sure the Deployment ID is preserved
-      if (!deploymentToSave["Deployment ID"] && deploymentToSave.id) {
-        deploymentToSave["Deployment ID"] = deploymentToSave.id;
-      }
-      
-      // If id is missing but Deployment ID exists, set id
-      if (!deploymentToSave.id && deploymentToSave["Deployment ID"]) {
-        deploymentToSave.id = deploymentToSave["Deployment ID"];
-      }
-      
       console.log("Saving deployment data:", deploymentToSave);
       
+      // Use different endpoints for new vs. existing deployments
+      const method = isNewDeployment ? "POST" : "PUT";
+      
       const response = await fetch("/api/deployments", {
-        method: "PUT",
+        method,
         headers: {
           "Content-Type": "application/json",
         },
@@ -266,7 +241,8 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
       }
 
       // Reset editing state
-      setEditingId(null);
+      setEditingDeployment(null);
+      setIsNewDeployment(false);
       setError(null);
       
       // Refresh data to ensure we have the latest changes
@@ -274,18 +250,14 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
     } catch (err) {
       setError("Failed to save changes: " + (err instanceof Error ? err.message : String(err)));
       console.error("Error updating deployment:", err);
+      throw err; // Re-throw to be caught by the modal
     } finally {
       setLoading(false);
     }
   };
 
-  // Cancel editing
-  const handleCancel = () => {
-    setEditingId(null);
-  };
-
   // Create a new deployment
-  const handleAdd = async () => {
+  const handleAdd = () => {
     // Generate a proper Deployment ID for the new deployment
     const today = new Date();
     const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
@@ -301,62 +273,8 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
       // Add other default values as needed
     };
     
-    setEditingId(newDeployment.id || null);
-    setEditFormData(newDeployment);
-    
-    // Scroll to the top of the table to see the editing form
-    if (tableContainerRef.current) {
-      tableContainerRef.current.scrollTop = 0;
-    }
-  };
-
-  // Save a new deployment
-  const handleSaveNew = async () => {
-    try {
-      setLoading(true);
-      
-      // Create a copy of the form data
-      const deploymentToSave = { ...editFormData };
-      
-      // Make sure Deployment ID is set before saving
-      if (!deploymentToSave["Deployment ID"]) {
-        const today = new Date();
-        const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
-        const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-        deploymentToSave["Deployment ID"] = `DEP-${dateStr}-${randomSuffix}`;
-      }
-      
-      // Ensure id is set to match Deployment ID
-      if (deploymentToSave["Deployment ID"] && !deploymentToSave.id) {
-        deploymentToSave.id = deploymentToSave["Deployment ID"];
-      }
-      
-      console.log("Saving new deployment data:", deploymentToSave);
-      
-      // For new deployments, use POST method
-      const response = await fetch("/api/deployments", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(deploymentToSave),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Error ${response.status}: ${errorText}`);
-      }
-
-      // Refresh the deployment list
-      await fetchDeployments();
-      setEditingId(null);
-      setError(null);
-    } catch (err) {
-      setError("Failed to add new deployment: " + (err instanceof Error ? err.message : String(err)));
-      console.error("Error adding deployment:", err);
-    } finally {
-      setLoading(false);
-    }
+    setEditingDeployment(newDeployment);
+    setIsNewDeployment(true);
   };
 
   // If loading, show loading indicator
@@ -418,7 +336,7 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
           {allowEdit && (
             <button
               onClick={handleAdd}
-              disabled={loading || editingId !== null}
+              disabled={loading || editingDeployment !== null}
               className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 transition"
             >
               Add New Deployment
@@ -428,7 +346,7 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
           {/* Refresh button */}
           <button
             onClick={() => fetchDeployments(false)}
-            disabled={loading || isRefreshing || editingId !== null}
+            disabled={loading || isRefreshing || editingDeployment !== null}
             className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition flex items-center justify-center gap-2"
           >
             {isRefreshing ? (
@@ -562,89 +480,35 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
                 className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                 style={{ backgroundColor: theme === 'dark' ? '#1e293b' : 'white' }}
               >
-                {editingId === rowId ? (
-                  // Edit mode row
-                  <>
-                    {orderedVisibleColumns.map((column) => (
-                      <td 
-                        key={column} 
-                        className="px-6 py-4 whitespace-nowrap border-b border-r"
-                        style={{ borderColor: themeObject.border }}
-                      >
-                        <input
-                          type="text"
-                          name={column}
-                          value={editFormData[column as keyof DeploymentData] || ""}
-                          onChange={handleInputChange}
-                          className="border rounded px-2 py-1 w-full"
-                          style={{ 
-                            backgroundColor: themeObject.inputBackground,
-                            color: themeObject.text,
-                            borderColor: themeObject.border
-                          }}
-                        />
-                      </td>
-                    ))}
-                    <td 
-                      className="px-6 py-4 text-center border-b sticky right-0"
-                      style={{ 
-                        borderColor: themeObject.border,
-                        backgroundColor: theme === 'dark' ? '#1e293b' : 'white',
-                        width: actionColumnWidth
-                      }}
+                {orderedVisibleColumns.map((column) => (
+                  <td 
+                    key={column} 
+                    className="px-6 py-4 border-b border-r"
+                    style={{ 
+                      borderColor: themeObject.border,
+                      whiteSpace: column.includes('Notes') ? 'normal' : 'nowrap'
+                    }}
+                  >
+                    {deployment[column as keyof DeploymentData] || ""}
+                  </td>
+                ))}
+                {allowEdit && (
+                  <td 
+                    className="px-6 py-4 text-center border-b sticky right-0"
+                    style={{ 
+                      borderColor: themeObject.border,
+                      backgroundColor: theme === 'dark' ? '#1e293b' : 'white',
+                      width: actionColumnWidth
+                    }}
+                  >
+                    <button
+                      onClick={() => handleEdit(deployment)}
+                      className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition"
+                      disabled={loading || editingDeployment !== null}
                     >
-                      <div className="flex flex-col space-y-2">
-                        <button
-                          onClick={rowId.startsWith('new-') ? handleSaveNew : handleSave}
-                          className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition"
-                          disabled={loading}
-                        >
-                          Save
-                        </button>
-                        <button
-                          onClick={handleCancel}
-                          className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition"
-                          disabled={loading}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </td>
-                  </>
-                ) : (
-                  // View mode row
-                  <>
-                    {orderedVisibleColumns.map((column) => (
-                      <td 
-                        key={column} 
-                        className="px-6 py-4 border-b border-r"
-                        style={{ 
-                          borderColor: themeObject.border,
-                          whiteSpace: column.includes('Notes') ? 'normal' : 'nowrap'
-                        }}
-                      >
-                        {deployment[column as keyof DeploymentData] || ""}
-                      </td>
-                    ))}
-                    {allowEdit && (
-                      <td 
-                        className="px-6 py-4 text-center border-b sticky right-0"
-                        style={{ 
-                          borderColor: themeObject.border,
-                          backgroundColor: theme === 'dark' ? '#1e293b' : 'white',
-                          width: actionColumnWidth
-                        }}
-                      >
-                        <button
-                          onClick={() => handleEdit(deployment)}
-                          className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition"
-                          disabled={loading || editingId !== null}
-                        >
-                          Edit
-                        </button>
-                      </td>
-                    )}
-                  </>
+                      Edit
+                    </button>
+                  </td>
                 )}
               </tr>
             );
@@ -662,6 +526,16 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
       <div className="mt-4 text-sm text-gray-500" style={{ color: theme === 'dark' ? '#9CA3AF' : '#6B7280' }}>
         <p>Click the refresh button to get the latest data. Last updated: {new Date().toLocaleTimeString()}</p>
       </div>
+
+      {/* Edit Deployment Modal */}
+      {editingDeployment && (
+        <EditDeploymentModal
+          deployment={editingDeployment}
+          onClose={handleCloseModal}
+          onSave={handleSaveDeployment}
+          isNew={isNewDeployment}
+        />
+      )}
     </div>
   );
 }
