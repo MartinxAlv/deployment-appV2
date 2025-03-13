@@ -44,6 +44,7 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
       }
       
       const data = await response.json();
+      console.log("Deployments from API:", data);
       setDeployments(data);
       
       // Extract all unique column names from the deployments
@@ -53,16 +54,30 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
         
         // Initialize visible columns if not set yet
         if (visibleColumns.length === 0) {
-          // Default to show all columns except 'id' and potentially long fields like 'notes'
-          const defaultVisibleColumns = columns.filter(col => 
-            col !== 'id' && col !== 'notes' && col !== 'createdBy' && col !== 'createdAt'
+          // Default to show important deployment columns
+          const defaultVisibleColumns = [
+            "Status", 
+            "Assigned To", 
+            "Location", 
+            "Deployment ID",
+            "Deployment Type",
+            "New Model", 
+            "Technician", 
+            "Deployment Date", 
+            "Priority"
+          ];
+          
+          // Filter to only include columns that actually exist in the data
+          const availableDefaultColumns = defaultVisibleColumns.filter(col => 
+            columns.includes(col)
           );
-          setVisibleColumns(defaultVisibleColumns);
+          
+          setVisibleColumns(availableDefaultColumns);
           
           // Initialize visibility map
           const visibilityMap: Record<string, boolean> = {};
           columns.forEach(col => {
-            visibilityMap[col] = defaultVisibleColumns.includes(col);
+            visibilityMap[col] = availableDefaultColumns.includes(col);
           });
           setColumnVisibilityMap(visibilityMap);
         }
@@ -134,19 +149,33 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
 
   // Reset column visibility to default
   const resetColumnVisibility = () => {
-    const defaultVisibleColumns = allColumns.filter(col => 
-      col !== 'id' && col !== 'notes' && col !== 'createdBy' && col !== 'createdAt'
+    // Default to show important deployment columns
+    const defaultVisibleColumns = [
+      "Status", 
+      "Assigned To", 
+      "Location", 
+      "Deployment ID",
+      "Deployment Type",
+      "New Model", 
+      "Technician", 
+      "Deployment Date", 
+      "Priority"
+    ];
+    
+    // Filter to only include columns that actually exist in the data
+    const availableDefaultColumns = defaultVisibleColumns.filter(col => 
+      allColumns.includes(col)
     );
     
     // Update visibility map
     const newVisibilityMap: Record<string, boolean> = {};
     allColumns.forEach(col => {
-      newVisibilityMap[col] = defaultVisibleColumns.includes(col);
+      newVisibilityMap[col] = availableDefaultColumns.includes(col);
     });
     setColumnVisibilityMap(newVisibilityMap);
     
     // Update visible columns
-    setVisibleColumns(defaultVisibleColumns);
+    setVisibleColumns(availableDefaultColumns);
   };
 
   // Get display columns in the correct order
@@ -156,7 +185,16 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
 
   // Start editing a deployment
   const handleEdit = (deployment: DeploymentData) => {
-    setEditingId(deployment.id || null);
+    console.log("Editing deployment:", deployment);
+    // Make sure we have a proper id to track this deployment
+    const editId = deployment.id || deployment["Deployment ID"] || `dep-${Date.now()}`;
+    
+    // If the ID is missing, but we have Deployment ID, use that instead
+    if (!deployment.id && deployment["Deployment ID"]) {
+      deployment.id = deployment["Deployment ID"];
+    }
+    
+    setEditingId(editId);
     setEditFormData({ ...deployment });
   };
 
@@ -173,6 +211,14 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
   const handleSave = async () => {
     try {
       setLoading(true);
+      
+      // Make sure the ID is still properly set
+      if (!editFormData.id && editFormData["Deployment ID"]) {
+        editFormData.id = editFormData["Deployment ID"];
+      }
+      
+      console.log("Saving deployment data:", editFormData);
+      
       const response = await fetch("/api/deployments", {
         method: "PUT",
         headers: {
@@ -182,12 +228,19 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
       });
 
       if (!response.ok) {
-        throw new Error(`Error: ${response.status}`);
+        const errorText = await response.text();
+        throw new Error(`Error ${response.status}: ${errorText}`);
       }
 
       // Update local state with the edited deployment
       setDeployments(
-        deployments.map((d) => (d.id === editFormData.id ? editFormData : d))
+        deployments.map((d) => {
+          // Match by either id or Deployment ID
+          if (d.id === editFormData.id || d["Deployment ID"] === editFormData["Deployment ID"]) {
+            return editFormData;
+          }
+          return d;
+        })
       );
       
       setEditingId(null);
@@ -196,10 +249,13 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
       // Refresh data to ensure we have the latest changes
       fetchDeployments(false);
     } catch (err) {
-      setError("Failed to save changes");
+      setError("Failed to save changes: " + (err instanceof Error ? err.message : String(err)));
       console.error("Error updating deployment:", err);
     } finally {
       setLoading(false);
+      // Add these debug logs here
+      console.log("Available columns:", allColumns);
+      console.log("Visible columns:", visibleColumns);
     }
   };
 
@@ -210,11 +266,18 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
 
   // Create a new deployment
   const handleAdd = async () => {
-    // Create a new empty form with a temporary ID
+    // Generate a proper Deployment ID for the new deployment
+    const today = new Date();
+    const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    const deploymentId = `DEP-${dateStr}-${randomSuffix}`;
+    
+    // Create a new empty form with proper IDs
     const newDeployment: DeploymentData = {
       id: `new-${Date.now()}`, // Temporary ID for UI purposes
-      deploymentDate: new Date().toISOString().split('T')[0],
-      status: 'Pending'
+      "Deployment ID": deploymentId, // Actual ID for the spreadsheet
+      "Deployment Date": today.toISOString().split('T')[0],
+      "Status": 'Pending'
       // Add other default values as needed
     };
     
@@ -232,6 +295,16 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
     try {
       setLoading(true);
       
+      // Make sure Deployment ID is set before saving
+      if (!editFormData["Deployment ID"]) {
+        const today = new Date();
+        const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
+        const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+        editFormData["Deployment ID"] = `DEP-${dateStr}-${randomSuffix}`;
+      }
+      
+      console.log("Saving new deployment data:", editFormData);
+      
       // For new deployments, use POST method
       const response = await fetch("/api/deployments", {
         method: "POST",
@@ -242,7 +315,8 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
       });
 
       if (!response.ok) {
-        throw new Error(`Error: ${response.status}`);
+        const errorText = await response.text();
+        throw new Error(`Error ${response.status}: ${errorText}`);
       }
 
       // Refresh the deployment list
@@ -250,7 +324,7 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
       setEditingId(null);
       setError(null);
     } catch (err) {
-      setError("Failed to add new deployment");
+      setError("Failed to add new deployment: " + (err instanceof Error ? err.message : String(err)));
       console.error("Error adding deployment:", err);
     } finally {
       setLoading(false);
@@ -276,6 +350,29 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
 
   // Get ordered visible columns
   const orderedVisibleColumns = getOrderedVisibleColumns();
+  
+  const getColumnWidth = (column: string) => {
+    // Set appropriate widths based on column content
+    switch (column) {
+      case 'id':
+      case 'Deployment ID':
+      case 'Unique ID':
+        return '120px';
+      case 'Deployment Notes':
+      case 'Technician Notes':
+        return '300px';
+      case 'SR Link':
+      case 'Deployment SR Link':
+      case 'SR#':
+      case 'Deployment SR#':
+        return '200px';
+      case 'Signature Column':
+      case 'Deployment Picture':
+        return '150px';
+      default:
+        return '150px';
+    }
+  };
 
   return (
     <div className="flex flex-col">
@@ -405,7 +502,7 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
                   className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-r"
                   style={{ 
                     borderColor: themeObject.border,
-                    minWidth: column === 'id' ? '80px' : column === 'notes' ? '300px' : '150px'
+                    minWidth: getColumnWidth(column)
                   }}
                 >
                   {column}
@@ -427,13 +524,17 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-          {deployments.map((deployment, index) => (
-  <tr 
-    key={deployment.id || `deployment-${index}`}
-    className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-    style={{ backgroundColor: theme === 'dark' ? '#1e293b' : 'white' }}
-  >
-                {editingId === deployment.id ? (
+          {deployments.map((deployment, index) => {
+            // Create a unique identifier for the row that works across all cases
+            const rowId = deployment.id || deployment["Deployment ID"] || `deployment-${index}`;
+            
+            return (
+              <tr 
+                key={rowId}
+                className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                style={{ backgroundColor: theme === 'dark' ? '#1e293b' : 'white' }}
+              >
+                {editingId === rowId ? (
                   // Edit mode row
                   <>
                     {orderedVisibleColumns.map((column) => (
@@ -466,7 +567,7 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
                     >
                       <div className="flex flex-col space-y-2">
                         <button
-                          onClick={deployment.id?.startsWith('new-') ? handleSaveNew : handleSave}
+                          onClick={rowId.startsWith('new-') ? handleSaveNew : handleSave}
                           className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition"
                           disabled={loading}
                         >
@@ -491,7 +592,7 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
                         className="px-6 py-4 border-b border-r"
                         style={{ 
                           borderColor: themeObject.border,
-                          whiteSpace: column === 'notes' ? 'normal' : 'nowrap'
+                          whiteSpace: column.includes('Notes') ? 'normal' : 'nowrap'
                         }}
                       >
                         {deployment[column as keyof DeploymentData] || ""}
@@ -518,7 +619,8 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
                   </>
                 )}
               </tr>
-            ))}
+            );
+          })}
           </tbody>
         </table>
 

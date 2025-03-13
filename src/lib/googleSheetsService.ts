@@ -4,21 +4,42 @@ import { JWT } from 'google-auth-library';
 
 // Types for deployment data
 export interface DeploymentData {
-  // Define your columns based on the 2425 Deployment Sheet structure
-  // For example:
   id?: string;
-  deploymentDate?: string;
-  clientName?: string;
-  location?: string;
-  technician?: string;
-  status?: string;
-  notes?: string;
-  createdBy?: string;
-  createdAt?: string;
-  // Add any other fields as needed
-  [key: string]: string | undefined; // Allow for dynamic properties from spreadsheet but with proper typing
+  Status?: string;
+  "Assigned To"?: string;
+  Position?: string;
+  "Department - Division"?: string;
+  Department?: string;
+  Division?: string;
+  Location?: string;
+  "Deployment Type"?: string;
+  "Current Model"?: string;
+  "Current SN"?: string;
+  "New Device Type"?: string;
+  "Deployment Notes"?: string;
+  "New Model"?: string;
+  "New SN"?: string;
+  "New Monitor Type"?: string;
+  "New Monitor 1 SN"?: string;
+  "New Monitor 2 SN"?: string;
+  "New Other"?: string;
+  "SR#"?: string;
+  "SR Link"?: string;
+  Priority?: string;
+  Technician?: string;
+  "Deployment SR#"?: string;
+  "Deployment SR Link"?: string;
+  "Technician Notes"?: string;
+  "Deployment ID"?: string;
+  "Unique ID"?: string;
+  "Refuse to sign"?: string;
+  "Signatory Name"?: string;
+  "Signature Column"?: string;
+  "Deployment Date"?: string;
+  "Deployment Picture"?: string;
+  // Support for any other fields
+  [key: string]: string | undefined;
 }
-
 /**
  * Format the private key correctly regardless of how it's stored in env vars
  */
@@ -145,7 +166,7 @@ export class DeploymentSheetService {
       for (let i = 1; i < rows.length; i++) {
         // Skip if this is a formula row (0-based index)
         if (this.formulaRows.includes(i)) {
-          console.log(`Skipping formula row ${i+1}`);
+          // Removed the console.log message about skipping formula rows
           continue;
         }
         
@@ -196,60 +217,102 @@ export class DeploymentSheetService {
   /**
    * Update a deployment row by ID
    */
-  async updateDeployment(deployment: DeploymentData): Promise<void> {
-    try {
-      if (!deployment.id) {
-        throw new Error('Deployment ID is required for updates');
-      }
-      
-      const sheets = await getSheetsInstance();
-      
-      // First, get all data to find the row with matching ID
-      const allData = await this.getAllDeployments();
-      const headerResponse = await sheets.spreadsheets.values.get({
-        spreadsheetId: this.spreadsheetId,
-        range: `${this.sheetName}!1:1`,
-      });
-      
-      const headers = headerResponse.data.values?.[0] || [];
-      const rowIndex = allData.findIndex(d => d.id === deployment.id);
-      
-      if (rowIndex === -1) {
-        throw new Error(`Deployment with ID ${deployment.id} not found`);
-      }
-      
-      // Calculate the actual row in the sheet by counting formula rows before this index
-      let actualSheetRowIndex = rowIndex + 2; // +1 for 0-index to 1-index conversion, +1 for header row
-      
-      // Adjust for formula rows that appear before this row
-      for (const formulaRow of this.formulaRows) {
-        if (formulaRow < actualSheetRowIndex - 1) { // -1 to convert back to 0-based for comparison
-          actualSheetRowIndex++;
-        }
-      }
-      
-      // Create a new row with updated values
-      const newRow: (string | number | boolean)[] = [];
-      headers.forEach((header) => {
-        const key = header as string;
-        // Use the new value from deployment if available, otherwise use ''
-        newRow.push(deployment[key] !== undefined ? deployment[key] : '');
-      });
-      
-      // Update the entire row
-      await sheets.spreadsheets.values.update({
-        spreadsheetId: this.spreadsheetId,
-        range: `${this.sheetName}!A${actualSheetRowIndex}:${this.columnToLetter(headers.length)}${actualSheetRowIndex}`,
-        valueInputOption: 'USER_ENTERED',
-        requestBody: {
-          values: [newRow]
-        }
-      });
-      
-    } catch (error) {
-      console.error('Error updating deployment:', error);
-      throw new Error(`Failed to update deployment: ${error instanceof Error ? error.message : String(error)}`);
+  /**
+ * Update a deployment row by ID - Fixed to preserve existing data
+ */
+async updateDeployment(deployment: DeploymentData): Promise<void> {
+  try {
+    // Ensure we have a valid ID to use for lookup
+    const lookupId = deployment.id || deployment["Deployment ID"];
+    
+    if (!lookupId) {
+      throw new Error('Either id or Deployment ID field is required for updates');
     }
+    
+    console.log(`Updating deployment with lookup ID: ${lookupId}`);
+    
+    const sheets = await getSheetsInstance();
+    
+    // First, get all data to find the row with matching ID
+    const allData = await this.getAllDeployments();
+    const headerResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: this.spreadsheetId,
+      range: `${this.sheetName}!1:1`,
+    });
+    
+    const headers = headerResponse.data.values?.[0] || [];
+    
+    // Find the existing deployment by either id or Deployment ID
+    const existingDeployment = allData.find(d => 
+      (d.id === lookupId) || (d["Deployment ID"] === lookupId)
+    );
+    
+    const rowIndex = allData.findIndex(d => 
+      (d.id === lookupId) || (d["Deployment ID"] === lookupId)
+    );
+    
+    if (rowIndex === -1 || !existingDeployment) {
+      throw new Error(`Deployment with ID ${lookupId} not found`);
+    }
+    
+    console.log(`Found deployment at index: ${rowIndex}`);
+    
+    // Calculate the actual row in the sheet by counting formula rows before this index
+    let actualSheetRowIndex = rowIndex + 2; // +1 for 0-index to 1-index conversion, +1 for header row
+    
+    // Adjust for formula rows that appear before this row
+    for (const formulaRow of this.formulaRows) {
+      if (formulaRow < actualSheetRowIndex - 1) { // -1 to convert back to 0-based for comparison
+        actualSheetRowIndex++;
+      }
+    }
+    
+    console.log(`Calculated actual row in sheet: ${actualSheetRowIndex}`);
+    
+    // Create a new row with updated values
+    // CRITICAL FIX: Preserve existing data for fields not included in the update
+    const newRow: (string | number | boolean)[] = [];
+    headers.forEach((header) => {
+      const key = header as string;
+      
+      // IMPORTANT: First check if this field is being updated
+      if (deployment[key] !== undefined) {
+        // This field is being updated, use the new value
+        newRow.push(deployment[key] || '');
+      } else if (existingDeployment[key] !== undefined) {
+        // This field is not being updated, preserve the existing value
+        newRow.push(existingDeployment[key] || '');
+      } else {
+        // This field doesn't exist in either object, use empty string
+        newRow.push('');
+      }
+    });
+    
+    // Ensure critical IDs are preserved
+    if (existingDeployment["Deployment ID"] && !deployment["Deployment ID"]) {
+      // Find the index of the Deployment ID column
+      const idIndex = headers.findIndex(h => h === "Deployment ID");
+      if (idIndex >= 0) {
+        newRow[idIndex] = existingDeployment["Deployment ID"];
+      }
+    }
+    
+    // Update the entire row
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: this.spreadsheetId,
+      range: `${this.sheetName}!A${actualSheetRowIndex}:${this.columnToLetter(headers.length - 1)}${actualSheetRowIndex}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: {
+        values: [newRow]
+      }
+    });
+    
+    console.log(`Successfully updated row ${actualSheetRowIndex} in the sheet`);
+    
+  } catch (error) {
+    console.error('Error updating deployment:', error);
+    throw new Error(`Failed to update deployment: ${error instanceof Error ? error.message : String(error)}`);
+  }
   }
 
   /**
@@ -273,7 +336,15 @@ export class DeploymentSheetService {
         const key = header as string;
         newRow.push(deployment[key] !== undefined ? deployment[key] : '');
       });
-      
+      // Generate a Deployment ID if not provided
+if (!deployment["Deployment ID"]) {
+  // Format: DEP-YYYYMMDD-XXXX (where XXXX is a random number)
+  const today = new Date();
+  const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
+  const randomSuffix = Math.floor(1000 + Math.random() * 9000); // 4-digit random number
+  deployment["Deployment ID"] = `DEP-${dateStr}-${randomSuffix}`;
+  console.log(`Generated Deployment ID: ${deployment["Deployment ID"]}`);
+}
       // Append the new row
       await sheets.spreadsheets.values.append({
         spreadsheetId: this.spreadsheetId,
