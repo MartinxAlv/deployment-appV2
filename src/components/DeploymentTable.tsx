@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { DeploymentData } from "@/lib/googleSheetsService";
 import { useTheme } from "@/components/ThemeProvider";
 
@@ -16,16 +16,26 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
   const [editFormData, setEditFormData] = useState<DeploymentData>({});
   const { themeObject, theme } = useTheme();
   const tableContainerRef = useRef<HTMLDivElement>(null);
-
-  // Fetch deployments on component mount
-  useEffect(() => {
-    fetchDeployments();
-  }, []);
+  
+  // Column visibility state
+  const [allColumns, setAllColumns] = useState<string[]>([]);
+  const [visibleColumns, setVisibleColumns] = useState<string[]>([]);
+  const [showColumnFilter, setShowColumnFilter] = useState(false);
+  
+  // Refresh state
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Function to fetch deployments
-  const fetchDeployments = async () => {
+  const fetchDeployments = useCallback(async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) {
+        setLoading(true);
+      }
+      
+      if (!showLoading) {
+        setIsRefreshing(true);
+      }
+      
       const response = await fetch("/api/deployments");
       
       if (!response.ok) {
@@ -34,13 +44,86 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
       
       const data = await response.json();
       setDeployments(data);
+      
+      // Extract all unique column names from the deployments
+      if (data.length > 0) {
+        const columns = getColumnHeaders(data);
+        setAllColumns(columns);
+        
+        // Initialize visible columns if not set yet
+        if (visibleColumns.length === 0) {
+          // Default to show all columns except 'id' and potentially long fields like 'notes'
+          const defaultVisibleColumns = columns.filter(col => 
+            col !== 'id' && col !== 'notes' && col !== 'createdBy' && col !== 'createdAt'
+          );
+          setVisibleColumns(defaultVisibleColumns);
+        }
+      }
+      
       setError(null);
     } catch (err) {
-      setError("Failed to load deployment data");
+      if (showLoading) {
+        setError("Failed to load deployment data");
+      } else {
+        setError("Failed to refresh data. Try again later.");
+        // Clear error after 3 seconds
+        setTimeout(() => setError(null), 3000);
+      }
       console.error("Error fetching deployments:", err);
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
+      if (!showLoading) {
+        setIsRefreshing(false);
+      }
     }
+  }, [visibleColumns.length]);
+
+  // Initial data load
+  useEffect(() => {
+    fetchDeployments();
+  }, [fetchDeployments]);
+
+  // Extract column names from deployments
+  const getColumnHeaders = (data: DeploymentData[]) => {
+    if (!data || data.length === 0) return [];
+    
+    // Get all unique keys from all deployments to ensure all columns are shown
+    const allKeys = new Set<string>();
+    data.forEach(deployment => {
+      Object.keys(deployment).forEach(key => {
+        allKeys.add(key);
+      });
+    });
+    
+    // Convert to array and ensure 'id' is first if it exists
+    const headers = Array.from(allKeys);
+    if (headers.includes('id')) {
+      headers.splice(headers.indexOf('id'), 1);
+      headers.unshift('id');
+    }
+    
+    return headers;
+  };
+
+  // Toggle column visibility
+  const toggleColumnVisibility = (column: string) => {
+    setVisibleColumns(prev => {
+      if (prev.includes(column)) {
+        return prev.filter(c => c !== column);
+      } else {
+        return [...prev, column];
+      }
+    });
+  };
+
+  // Reset column visibility to default
+  const resetColumnVisibility = () => {
+    const defaultVisibleColumns = allColumns.filter(col => 
+      col !== 'id' && col !== 'notes' && col !== 'createdBy' && col !== 'createdAt'
+    );
+    setVisibleColumns(defaultVisibleColumns);
   };
 
   // Start editing a deployment
@@ -81,6 +164,9 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
       
       setEditingId(null);
       setError(null);
+      
+      // Refresh data to ensure we have the latest changes
+      fetchDeployments(false);
     } catch (err) {
       setError("Failed to save changes");
       console.error("Error updating deployment:", err);
@@ -157,30 +243,6 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
     );
   }
 
-  // Extract column names from first deployment
-  const getColumnHeaders = () => {
-    if (deployments.length === 0) return [];
-    
-    // Get all unique keys from all deployments to ensure all columns are shown
-    const allKeys = new Set<string>();
-    deployments.forEach(deployment => {
-      Object.keys(deployment).forEach(key => {
-        allKeys.add(key);
-      });
-    });
-    
-    // Convert to array and ensure 'id' is first if it exists
-    const headers = Array.from(allKeys);
-    if (headers.includes('id')) {
-      headers.splice(headers.indexOf('id'), 1);
-      headers.unshift('id');
-    }
-    
-    return headers;
-  };
-
-  const columns = getColumnHeaders();
-
   // Calculate sticky left column width for actions
   const actionColumnWidth = "100px";
 
@@ -193,16 +255,99 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
         </div>
       )}
 
-      {/* Add new deployment button */}
-      {allowEdit && (
-        <div className="mb-4">
+      {/* Action buttons row */}
+      <div className="flex flex-wrap justify-between items-center mb-4 gap-2">
+        <div className="flex gap-2">
+          {/* Add new deployment button */}
+          {allowEdit && (
+            <button
+              onClick={handleAdd}
+              disabled={loading || editingId !== null}
+              className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 transition"
+            >
+              Add New Deployment
+            </button>
+          )}
+          
+          {/* Refresh button */}
           <button
-            onClick={handleAdd}
-            disabled={loading || editingId !== null}
-            className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 transition"
+            onClick={() => fetchDeployments(false)}
+            disabled={loading || isRefreshing || editingId !== null}
+            className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition flex items-center justify-center gap-2"
           >
-            Add New Deployment
+            {isRefreshing ? (
+              <>
+                <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>Refreshing...</span>
+              </>
+            ) : (
+              <>
+                <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <span>Refresh Data</span>
+              </>
+            )}
           </button>
+        </div>
+        
+        {/* Column filter button */}
+        <button
+          onClick={() => setShowColumnFilter(!showColumnFilter)}
+          className="px-4 py-2 rounded-md transition"
+          style={{
+            backgroundColor: theme === 'dark' ? '#4B5563' : '#E5E7EB',
+            color: themeObject.text
+          }}
+        >
+          {showColumnFilter ? "Hide Column Filter" : "Filter Columns"}
+        </button>
+      </div>
+
+      {/* Column filter panel */}
+      {showColumnFilter && (
+        <div 
+          className="mb-4 p-4 border rounded-md"
+          style={{ 
+            backgroundColor: themeObject.cardBackground,
+            borderColor: themeObject.border,
+            color: themeObject.text
+          }}
+        >
+          <div className="flex justify-between items-center mb-2">
+            <h3 className="font-medium">Select Columns to Display:</h3>
+            <button
+              onClick={resetColumnVisibility}
+              className="text-blue-500 hover:text-blue-700 text-sm"
+            >
+              Reset to Default
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {allColumns.map(column => (
+              <div key={column} className="inline-flex items-center">
+                <label className="flex items-center space-x-2 cursor-pointer px-3 py-1 rounded-md"
+                  style={{
+                    backgroundColor: visibleColumns.includes(column) 
+                      ? (theme === 'dark' ? '#1E40AF' : '#DBEAFE') 
+                      : (theme === 'dark' ? '#374151' : '#F3F4F6'),
+                    color: themeObject.text
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={visibleColumns.includes(column)}
+                    onChange={() => toggleColumnVisibility(column)}
+                    className="form-checkbox h-4 w-4"
+                  />
+                  <span>{column}</span>
+                </label>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -223,7 +368,7 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
         >
           <thead className="sticky top-0 z-10" style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#f8fafc' }}>
             <tr>
-              {columns.map((column) => (
+              {visibleColumns.map((column) => (
                 <th
                   key={column}
                   className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-r"
@@ -260,7 +405,7 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
                 {editingId === deployment.id ? (
                   // Edit mode row
                   <>
-                    {columns.map((column) => (
+                    {visibleColumns.map((column) => (
                       <td 
                         key={column} 
                         className="px-6 py-4 whitespace-nowrap border-b border-r"
@@ -309,7 +454,7 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
                 ) : (
                   // View mode row
                   <>
-                    {columns.map((column) => (
+                    {visibleColumns.map((column) => (
                       <td 
                         key={column} 
                         className="px-6 py-4 border-b border-r"
@@ -350,6 +495,11 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
         {deployments.length === 0 && (
           <div className="text-center py-8">No deployment data available.</div>
         )}
+      </div>
+      
+      {/* Last update notification */}
+      <div className="mt-4 text-sm text-gray-500" style={{ color: theme === 'dark' ? '#9CA3AF' : '#6B7280' }}>
+        <p>Click the refresh button to get the latest data. Last updated: {new Date().toLocaleTimeString()}</p>
       </div>
     </div>
   );
