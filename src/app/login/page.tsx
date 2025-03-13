@@ -5,6 +5,7 @@ import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "@/components/ThemeProvider";
+import { ThemeToggleSwitch } from "@/components/ThemeToggleSwitch";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -41,6 +42,11 @@ export default function Login() {
       className="flex min-h-screen items-center justify-center px-4"
       style={{ backgroundColor: themeObject.background, color: themeObject.text }}
     >
+      {/* Theme Toggle - Static on Login Page */}
+      <div className="absolute top-4 right-4">
+        <ThemeToggleSwitch />
+      </div>
+
       <div
         className="p-10 shadow-lg rounded-lg w-full max-w-md border transition-all duration-300"
         style={{

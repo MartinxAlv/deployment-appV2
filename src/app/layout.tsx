@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import { Inter, Roboto_Mono } from "next/font/google";
 import "./globals.css";
 import ClientHeader from "@/components/ClientHeader";
+import ConditionalClientHeader from "@/components/ConditionalClientHeader";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -27,8 +28,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`${inter.variable} ${robotoMono.variable} antialiased`}>
         <AuthProvider>
           <ThemeProvider>
-            {/* Render a separate client component for conditional rendering */}
-            <ClientHeader />
+            {/* Replaced ClientHeader with ConditionalClientHeader */}
+            <ConditionalClientHeader />
             {children}
           </ThemeProvider>
         </AuthProvider>
