@@ -1,8 +1,8 @@
 // src/app/login/page.tsx
 "use client";
 
-import { useState } from "react";
-import { signIn } from "next-auth/react";
+import { useState, useEffect } from "react";
+import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "@/components/ThemeProvider";
 import { ThemeToggleSwitch } from "@/components/ThemeToggleSwitch";
@@ -14,6 +14,15 @@ export default function Login() {
   const [showForgotMessage, setShowForgotMessage] = useState(false);
   const router = useRouter();
   const { themeObject } = useTheme();
+  const { data: session, status } = useSession();
+
+  // Redirect to dashboard if already authenticated
+  useEffect(() => {
+    if (status === "authenticated") {
+      console.log("User already authenticated, redirecting to dashboard");
+      router.push("/dashboard");
+    }
+  }, [status, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,6 +45,18 @@ export default function Login() {
   const handleForgotPassword = () => {
     setShowForgotMessage(true);
   };
+
+  // If checking auth status or already authenticated
+  if (status === "loading" || status === "authenticated") {
+    return (
+      <div
+        className="flex min-h-screen items-center justify-center px-4"
+        style={{ backgroundColor: themeObject.background, color: themeObject.text }}
+      >
+        <p>{status === "authenticated" ? "Redirecting..." : "Loading..."}</p>
+      </div>
+    );
+  }
 
   return (
     <div
