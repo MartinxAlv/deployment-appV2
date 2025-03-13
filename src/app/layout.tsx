@@ -4,7 +4,6 @@ import { ThemeProvider } from "../components/ThemeProvider";
 import type { Metadata } from "next";
 import { Inter, Roboto_Mono } from "next/font/google";
 import "./globals.css";
-import ClientHeader from "@/components/ClientHeader";
 import ConditionalClientHeader from "@/components/ConditionalClientHeader";
 
 const inter = Inter({
