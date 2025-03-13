@@ -90,8 +90,9 @@ const getSheetsInstance = async () => {
 export class DeploymentSheetService {
   private spreadsheetId: string;
   private sheetName: string;
+  private formulaRows: number[]; // Store formula row indices to skip
 
-  constructor(spreadsheetId?: string, sheetName?: string) {
+  constructor(spreadsheetId?: string, sheetName?: string, formulaRows?: number[]) {
     // Get from environment variables if not provided
     this.spreadsheetId = spreadsheetId || process.env.DEPLOYMENT_SPREADSHEET_ID || '';
     this.sheetName = sheetName || process.env.DEPLOYMENT_SHEET_NAME || 'Sheet1';
@@ -99,10 +100,26 @@ export class DeploymentSheetService {
     if (!this.spreadsheetId) {
       throw new Error('Spreadsheet ID is required');
     }
+    
+    // Set up formula rows configuration
+    // Use environment variable (comma-separated list of 1-based row numbers)
+    // Example: SHEET_FORMULA_ROWS=2,5,10
+    if (formulaRows) {
+      this.formulaRows = formulaRows;
+    } else {
+      const formulaRowsEnv = process.env.SHEET_FORMULA_ROWS || '2'; // Default to row 2 (index 1)
+      this.formulaRows = formulaRowsEnv
+        .split(',')
+        .filter(Boolean)
+        .map(row => parseInt(row.trim(), 10) - 1) // Convert to 0-based indices
+        .filter(rowNum => !isNaN(rowNum));
+    }
+    
+    console.log('Formula rows configured to skip:', this.formulaRows.map(r => r + 1));
   }
 
   /**
-   * Get all deployment data from the sheet
+   * Get all deployment data from the sheet, skipping formula rows
    */
   async getAllDeployments(): Promise<DeploymentData[]> {
     try {
@@ -122,14 +139,25 @@ export class DeploymentSheetService {
       // First row contains headers
       const headers = rows[0] as string[];
       
-      // Convert the rows to objects with the headers as keys
-      const deployments = rows.slice(1).map(row => {
+      // Convert rows to objects, skipping formula rows
+      const deployments: DeploymentData[] = [];
+      
+      for (let i = 1; i < rows.length; i++) {
+        // Skip if this is a formula row (0-based index)
+        if (this.formulaRows.includes(i)) {
+          console.log(`Skipping formula row ${i+1}`);
+          continue;
+        }
+        
+        const row = rows[i];
         const deployment: Record<string, string | undefined> = {};
+        
         headers.forEach((header, index) => {
           deployment[header] = row[index] || '';
         });
-        return deployment as DeploymentData;
-      });
+        
+        deployments.push(deployment as DeploymentData);
+      }
       
       return deployments;
       
@@ -190,8 +218,15 @@ export class DeploymentSheetService {
         throw new Error(`Deployment with ID ${deployment.id} not found`);
       }
       
-      // Convert to actual row index in the sheet (add 2: 1 for 0-index, 1 for header row)
-      const sheetRowIndex = rowIndex + 2;
+      // Calculate the actual row in the sheet by counting formula rows before this index
+      let actualSheetRowIndex = rowIndex + 2; // +1 for 0-index to 1-index conversion, +1 for header row
+      
+      // Adjust for formula rows that appear before this row
+      for (const formulaRow of this.formulaRows) {
+        if (formulaRow < actualSheetRowIndex - 1) { // -1 to convert back to 0-based for comparison
+          actualSheetRowIndex++;
+        }
+      }
       
       // Create a new row with updated values
       const newRow: (string | number | boolean)[] = [];
@@ -204,7 +239,7 @@ export class DeploymentSheetService {
       // Update the entire row
       await sheets.spreadsheets.values.update({
         spreadsheetId: this.spreadsheetId,
-        range: `${this.sheetName}!A${sheetRowIndex}:${this.columnToLetter(headers.length)}${sheetRowIndex}`,
+        range: `${this.sheetName}!A${actualSheetRowIndex}:${this.columnToLetter(headers.length)}${actualSheetRowIndex}`,
         valueInputOption: 'USER_ENTERED',
         requestBody: {
           values: [newRow]
