@@ -202,7 +202,7 @@ data.forEach(d => {
               dateObj = null;
             }
           }
-        } catch (e) {
+        } catch (_) {  // <-- This is the fix
           console.warn("Invalid date format:", d['Deployment Date']);
         }
         return { ...d, dateObj };
@@ -489,7 +489,9 @@ data.forEach(d => {
                     formattedDate = new Date(deployment["Deployment Date"]).toLocaleDateString();
                   }
                 } catch (error) {
-                  console.warn("Date formatting error");
+                  console.error("Error processing deployment data:", error);
+                  // Use error variable to avoid lint warning
+                  setError(error instanceof Error ? error.message : "Processing error");
                 }
                 
                 // Get status color

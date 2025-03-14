@@ -3,17 +3,15 @@
 
 import { ThemeToggleSwitch } from "./ThemeToggleSwitch";
 import { LogoutButton } from "./LogoutButton";
-import { usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
 const ClientHeader: React.FC = () => {
-  const pathname = usePathname();
-  // Removed unused router import/variable
-  const { status } = useSession();
+  const router = useRouter();
+  const { data: session, status } = useSession();
 
   // Only show elements when user is authenticated and on specific pages
   const isAuthenticated = status === "authenticated";
-  // Removed unused variables isDashboard and isDeploymentsPage
 
   return (
     <div className="absolute top-4 right-4 flex items-center space-x-4">
