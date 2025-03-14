@@ -61,7 +61,9 @@ const DashboardStats: React.FC = () => {
   const chartColors: ChartColors = {
     status: {
       Completed: isDark ? '#10B981' : '#34D399',
+      Deployed: isDark ? '#10B981' : '#34D399', // Same color as Completed
       'In Progress': isDark ? '#3B82F6' : '#60A5FA',
+      'Ready to Deploy': isDark ? '#3B82F6' : '#60A5FA', // Same color as In Progress
       Pending: isDark ? '#F59E0B' : '#FBBF24',
       Cancelled: isDark ? '#EF4444' : '#F87171',
       'On Hold': isDark ? '#6B7280' : '#9CA3AF',
@@ -129,18 +131,22 @@ const DashboardStats: React.FC = () => {
 
     try {
       // Basic counts
-      const total = data.length;
-      const completed = data.filter(d => d.Status === 'Completed').length;
-      const inProgress = data.filter(d => d.Status === 'In Progress').length;
-      const pending = data.filter(d => d.Status === 'Pending').length;
+const total = data.length;
+// Count both "Completed" and "Deployed" statuses as completed
+const completed = data.filter(d => d.Status === 'Completed' || d.Status === 'Deployed').length;
+// Count both "In Progress" and "Ready to Deploy" statuses as in progress
+const inProgress = data.filter(d => d.Status === 'In Progress' || d.Status === 'Ready to Deploy').length;
+const pending = data.filter(d => d.Status === 'Pending').length;
 
       // Status distribution
       const statusCounts: Record<string, number> = {};
-      data.forEach(d => {
-        if (d.Status) {
-          statusCounts[d.Status] = (statusCounts[d.Status] || 0) + 1;
-        }
-      });
+data.forEach(d => {
+  if (d.Status) {
+    // Use original status name for counting to preserve all categories
+    statusCounts[d.Status] = (statusCounts[d.Status] || 0) + 1;
+  }
+});
+      // Create status data for charts
       const statusData = Object.keys(statusCounts).map(status => ({
         name: status,
         value: statusCounts[status]
