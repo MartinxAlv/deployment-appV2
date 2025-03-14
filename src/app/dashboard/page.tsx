@@ -1,9 +1,11 @@
-"use client"; // Ensure this is a Client Component
+// src/app/dashboard/page.tsx
+"use client";
 
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useTheme } from "@/components/ThemeProvider";
+import DashboardStats from "@/components/DashboardStats"; // Import the new statistics component
 
 export default function Dashboard() {
   const { data: session, status } = useSession();
@@ -21,13 +23,43 @@ export default function Dashboard() {
 
   return (
     <div
-      className="min-h-screen flex flex-col"
+      className="min-h-screen py-8 px-4 md:px-8"
       style={{ backgroundColor: themeObject.background, color: themeObject.text }}
     >
-      {/* 🔹 Main Content */}
-      <div className="flex flex-col items-center justify-center h-screen space-y-4">
-        <h1 className="text-2xl font-bold">Welcome!, {session?.user?.email}</h1>
-        <p>Status: {status}</p>
+      {/* Header Section */}
+      <div className="max-w-7xl mx-auto">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 mt-10">
+          <div>
+            <h1 className="text-3xl font-bold">Welcome, {session?.user?.email}</h1>
+            <p className="mt-1 text-gray-500" style={{ color: themeObject.text === '#ffffff' ? '#9CA3AF' : '#6B7280' }}>
+              Here's an overview of deployment activities
+            </p>
+          </div>
+          
+          {/* Quick Actions */}
+          <div className="mt-4 md:mt-0 flex flex-wrap gap-2">
+            <button
+              onClick={() => router.push('/deployments')}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            >
+              View All Deployments
+            </button>
+            
+            {session?.user?.role === "admin" && (
+              <button
+                onClick={() => router.push('/admin')}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+              >
+                Admin Panel
+              </button>
+            )}
+          </div>
+        </div>
+        
+        {/* Dashboard Statistics */}
+        <div className="mt-6">
+          <DashboardStats />
+        </div>
       </div>
     </div>
   );
