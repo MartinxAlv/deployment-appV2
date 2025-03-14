@@ -218,32 +218,46 @@ export class DeploymentSheetService {
       
       // Convert rows to objects, skipping formula rows
       const deployments: DeploymentData[] = [];
-      
-      for (let i = 1; i < rows.length; i++) {
-        // Skip if this is a formula row (0-based index)
-        if (this.formulaRows.includes(i)) {
-          continue;
-        }
-        
-        const row = rows[i];
-        if (!row || row.length === 0) continue; // Skip empty rows
-        
-        const deployment: Record<string, string | undefined> = {};
-        
-        headers.forEach((header, index) => {
-          // Ensure we don't try to access beyond the array length
-          deployment[header] = index < row.length ? row[index] : '';
-        });
-        
-        // If there's a Deployment ID, use it as the ID for consistent handling
-        if (deployment['Deployment ID']) {
-          deployment.id = deployment['Deployment ID'];
-        }
-        
-        deployments.push(deployment as DeploymentData);
-      }
-      
-      return deployments;
+
+for (let i = 1; i < rows.length; i++) {
+  // Skip if this is a formula row (0-based index)
+  if (this.formulaRows.includes(i)) {
+    continue;
+  }
+  
+  const row = rows[i];
+  if (!row || row.length === 0) continue; // Skip empty rows
+  
+  const deployment: Record<string, string | undefined> = {};
+  
+  headers.forEach((header, index) => {
+    // Ensure we don't try to access beyond the array length
+    deployment[header] = index < row.length ? row[index] : '';
+  });
+  
+  // NEW CODE: Skip rows that only have IDs but no other meaningful data
+  // Check if this row has any data beyond IDs
+  const hasActualData = Object.entries(deployment).some(([key, value]) => {
+    // Skip ID fields in this check
+    if (key === 'id' || key === 'Deployment ID' || key === 'Unique ID') {
+      return false;
+    }
+    // Consider the row meaningful if any other field has a value
+    return value && value.trim() !== '';
+  });
+  
+  // Only add the row if it has actual data
+  if (hasActualData) {
+    // If there's a Deployment ID, use it as the ID for consistent handling
+    if (deployment['Deployment ID']) {
+      deployment.id = deployment['Deployment ID'];
+    }
+    
+    deployments.push(deployment as DeploymentData);
+  }
+}
+
+return deployments;
       
     } catch (error) {
       console.error('Error fetching deployment data:', error);
