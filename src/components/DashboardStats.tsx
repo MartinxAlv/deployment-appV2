@@ -202,8 +202,8 @@ data.forEach(d => {
               dateObj = null;
             }
           }
-        } catch (_) {  // <-- This is the fix
-          console.warn("Invalid date format:", d['Deployment Date']);
+        } catch (e) {
+          console.warn("Invalid date format:", d['Deployment Date'], e);
         }
         return { ...d, dateObj };
       });
@@ -491,7 +491,7 @@ data.forEach(d => {
                 } catch (error) {
                   console.error("Error processing deployment data:", error);
                   // Use error variable to avoid lint warning
-                  setError(error instanceof Error ? error.message : "Processing error");
+                  console.warn("Error details:", error instanceof Error ? error.message : String(error));
                 }
                 
                 // Get status color

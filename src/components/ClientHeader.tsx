@@ -3,12 +3,10 @@
 
 import { ThemeToggleSwitch } from "./ThemeToggleSwitch";
 import { LogoutButton } from "./LogoutButton";
-import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
 const ClientHeader: React.FC = () => {
-  const router = useRouter();
-  const { data: session, status } = useSession();
+  const { status } = useSession();
 
   // Only show elements when user is authenticated and on specific pages
   const isAuthenticated = status === "authenticated";
