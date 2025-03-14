@@ -5,7 +5,8 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useTheme } from "@/components/ThemeProvider";
-import DashboardStats from "@/components/DashboardStats"; // Import the new statistics component
+import DashboardStats from "@/components/DashboardStats"; 
+import RefreshTimestamp from "@/components/RefreshTimestamp"; // Import the new component
 
 export default function Dashboard() {
   const { data: session, status } = useSession();
@@ -60,6 +61,9 @@ export default function Dashboard() {
         <div className="mt-6">
           <DashboardStats />
         </div>
+        
+        {/* Refresh Timestamp Message */}
+        <RefreshTimestamp />
       </div>
     </div>
   );
