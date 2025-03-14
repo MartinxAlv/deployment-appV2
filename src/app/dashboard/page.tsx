@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useTheme } from "@/components/ThemeProvider";
 import DashboardStats from "@/components/DashboardStats"; 
-import RefreshTimestamp from "@/components/RefreshTimestamp"; // Import the new component
+import RefreshTimestamp from "@/components/RefreshTimestamp";
 
 export default function Dashboard() {
   const { data: session, status } = useSession();
@@ -33,7 +33,7 @@ export default function Dashboard() {
           <div>
             <h1 className="text-3xl font-bold">Welcome, {session?.user?.email}</h1>
             <p className="mt-1 text-gray-500" style={{ color: themeObject.text === '#ffffff' ? '#9CA3AF' : '#6B7280' }}>
-              Here's an overview of deployment activities
+              Here&apos;s an overview of deployment activities
             </p>
           </div>
           

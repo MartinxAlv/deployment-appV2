@@ -19,7 +19,7 @@ interface DeploymentData {
   Priority?: string;
   "Deployment Date"?: string;
   dateObj?: Date | null;
-  [key: string]: any; // Index signature for other potential fields
+  [key: string]: string | number | Date | null | undefined;
 }
 
 // Define chart data types
@@ -51,7 +51,6 @@ interface ChartColors {
 }
 
 const DashboardStats: React.FC = () => {
-  const [deployments, setDeployments] = useState<DeploymentData[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const { theme } = useTheme();
@@ -109,7 +108,7 @@ const DashboardStats: React.FC = () => {
         }
         
         const data = await response.json();
-        setDeployments(data);
+        // Don't set deployments state, just process it directly
         processDeploymentData(data);
       } catch (err) {
         console.error("Error fetching deployments:", err);
@@ -118,6 +117,7 @@ const DashboardStats: React.FC = () => {
         setLoading(false);
       }
     };
+    
 
     fetchDeployments();
   }, []);
@@ -488,8 +488,8 @@ data.forEach(d => {
                   } else if (deployment["Deployment Date"]) {
                     formattedDate = new Date(deployment["Deployment Date"]).toLocaleDateString();
                   }
-                } catch (e) {
-                  console.warn("Date formatting error", e);
+                } catch (error) {
+                  console.warn("Date formatting error");
                 }
                 
                 // Get status color
@@ -549,8 +549,8 @@ data.forEach(d => {
                   } else if (deployment["Deployment Date"]) {
                     formattedDate = new Date(deployment["Deployment Date"]).toLocaleDateString();
                   }
-                } catch (e) {
-                  console.warn("Date formatting error", e);
+                } catch (error) {
+                  console.warn("Date formatting error");
                 }
                 
                 // Get status color
