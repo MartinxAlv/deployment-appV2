@@ -551,7 +551,7 @@ data.forEach(d => {
                   } else if (deployment["Deployment Date"]) {
                     formattedDate = new Date(deployment["Deployment Date"]).toLocaleDateString();
                   }
-                } catch (error) {
+                } catch {
                   console.warn("Date formatting error");
                 }
                 
