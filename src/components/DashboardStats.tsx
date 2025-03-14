@@ -11,6 +11,7 @@ interface DeploymentData {
   "Assigned To"?: string;
   Department?: string;
   Division?: string;
+  "Department - Division"?: string;
   Location?: string;
   "Deployment Type"?: string;
   "New Device Type"?: string;
@@ -145,13 +146,16 @@ const DashboardStats: React.FC = () => {
         value: statusCounts[status]
       }));
 
-      // Department distribution
+      // Department distribution - MODIFIED to use "Department - Division" field
       const deptCounts: Record<string, number> = {};
       data.forEach(d => {
-        if (d.Department) {
-          deptCounts[d.Department] = (deptCounts[d.Department] || 0) + 1;
+        // Try to get the department-division value first, then fall back to department if not available
+        const departmentValue = d["Department - Division"] || d.Department || "Unknown";
+        if (departmentValue) {
+          deptCounts[departmentValue] = (deptCounts[departmentValue] || 0) + 1;
         }
       });
+      
       const departmentData = Object.keys(deptCounts)
         .map(dept => ({ name: dept, value: deptCounts[dept] }))
         .sort((a, b) => b.value - a.value)
@@ -347,9 +351,9 @@ const DashboardStats: React.FC = () => {
           )}
         </div>
 
-        {/* Department Distribution */}
+        {/* Department Distribution - UPDATED TITLE TO REFLECT THE NEW SOURCE */}
         <div className={`p-4 rounded-lg shadow-sm ${isDark ? 'bg-gray-800' : 'bg-white border'}`}>
-          <h3 className={`text-lg font-medium mb-4 ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Deployments by Department</h3>
+          <h3 className={`text-lg font-medium mb-4 ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Deployments by Department - Division</h3>
           
           {stats.departmentData.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
