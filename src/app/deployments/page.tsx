@@ -8,7 +8,7 @@ import DeploymentTable from "@/components/DeploymentTable";
 import { useTheme } from "@/components/ThemeProvider";
 
 export default function DeploymentsPage() {
-  const { status, data: session } = useSession();
+  const { status } = useSession(); // Removed the unused 'data: session' part
   const router = useRouter();
   const { themeObject } = useTheme();
 
