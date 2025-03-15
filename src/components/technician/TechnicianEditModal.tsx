@@ -115,14 +115,14 @@ export default function TechnicianEditModal({
 
   // Status options for the dropdown
   const statusOptions = [
-    "Pending",
-    "Assigned",
-    "In Progress",
+    "Received",
+    "Imaging",
+    "Configuring",
     "Ready to Deploy",
     "Deployed",
-    "Completed",
-    "Cancelled",
-    "On Hold"
+    "CANCELED",
+    "UNK",
+    "Ordered"
   ];
 
   return (
@@ -198,14 +198,11 @@ export default function TechnicianEditModal({
               />
             </div>
             
-            {/* Map through all editable fields */}
+            {/* Map through all editable fields - ALWAYS display all fields, regardless of whether they have values */}
             {editableFields.map((field) => {
               const inputType = getInputType(field);
               const isChanged = changedFields.includes(field);
               
-              // Always include notes field, otherwise skip empty fields
-              if (!formData[field] && !originalData[field] && !field.includes('Notes')) return null;
-
               return (
                 <div key={field} className={inputType === "textarea" ? "col-span-1 md:col-span-2" : ""}>
                   <label 
