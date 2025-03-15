@@ -8,24 +8,38 @@ interface StatusBadgeProps {
 export const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
   if (!status) return <span className="px-2 py-1 rounded-full text-xs bg-gray-200 text-gray-800">Unknown</span>;
   
-  switch(status.toLowerCase()) {
-    case 'completed':
-      return <span className="px-2 py-1 rounded-full text-xs bg-green-200 text-green-800">Completed</span>;
-    case 'deployed':
-      return <span className="px-2 py-1 rounded-full text-xs bg-green-200 text-green-800">Deployed</span>;
-    case 'in progress':
-      return <span className="px-2 py-1 rounded-full text-xs bg-blue-200 text-blue-800">In Progress</span>;
-    case 'ready to deploy':
-      return <span className="px-2 py-1 rounded-full text-xs bg-blue-200 text-blue-800">Ready to Deploy</span>;
-    case 'pending':
-      return <span className="px-2 py-1 rounded-full text-xs bg-yellow-200 text-yellow-800">Pending</span>;
-    case 'cancelled':
-      return <span className="px-2 py-1 rounded-full text-xs bg-red-200 text-red-800">Cancelled</span>;
-    case 'on hold':
-      return <span className="px-2 py-1 rounded-full text-xs bg-gray-200 text-gray-800">On Hold</span>;
-    default:
-      return <span className="px-2 py-1 rounded-full text-xs bg-gray-200 text-gray-800">{status}</span>;
-  }
+  // Determine color based on status using the Excel sheet colors
+  const getStatusStyles = (statusValue: string) => {
+    const lowercaseStatus = statusValue.toLowerCase();
+    
+    switch(lowercaseStatus) {
+      case 'received':
+        return 'bg-white border border-gray-300 text-gray-800';
+      case 'imaging':
+        return 'bg-yellow-100 text-yellow-800 border border-yellow-300';
+      case 'configuring':
+        return 'bg-blue-100 text-blue-800 border border-blue-300';
+      case 'ready to deploy':
+        return 'bg-orange-100 text-orange-800 border border-orange-300';
+      case 'deployed':
+        return 'bg-green-100 text-green-800 border border-green-300';
+      case 'canceled':
+      case 'cancelled':
+        return 'bg-gray-100 text-gray-800 border border-gray-300';
+      case 'unk':
+        return 'bg-purple-100 text-purple-800 border border-purple-300';
+      case 'ordered':
+        return 'bg-amber-100 text-amber-800 border border-amber-300';
+      default:
+        return 'bg-gray-200 text-gray-800 border border-gray-300';
+    }
+  };
+  
+  return (
+    <span className={`px-2 py-1 rounded-full text-xs ${getStatusStyles(status)}`}>
+      {status}
+    </span>
+  );
 };
 
 interface PriorityBadgeProps {
