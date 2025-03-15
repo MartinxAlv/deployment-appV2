@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { DeploymentData } from "@/lib/googleSheetsService";
 import { useTheme } from "@/components/ThemeProvider";
 import ImprovedEditDeploymentModal from "@/components/ImprovedEditDeploymentModal";
+import DeploymentSearch from "@/components/DeploymentSearch";
 interface DeploymentTableProps {
   allowEdit?: boolean;
 }
@@ -18,14 +19,15 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
   const [editingDeployment, setEditingDeployment] = useState<DeploymentData | null>(null);
   const { themeObject, theme } = useTheme();
   const tableContainerRef = useRef<HTMLDivElement>(null);
-  
+
   // Column visibility state
   const [allColumns, setAllColumns] = useState<string[]>([]);
   const [visibleColumns, setVisibleColumns] = useState<string[]>([]);
   const [columnVisibilityMap, setColumnVisibilityMap] = useState<Record<string, boolean>>({});
   const [showColumnFilter, setShowColumnFilter] = useState(false);
   const [hasLoadedPreferences, setHasLoadedPreferences] = useState(false);
-  
+  const [searchQuery, setSearchQuery] = useState<string>("");
+
   // Refresh state
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -35,27 +37,27 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
       if (showLoading) {
         setLoading(true);
       }
-      
+
       if (!showLoading) {
         setIsRefreshing(true);
       }
-      
+
       const response = await fetch("/api/deployments");
-      
+
       if (!response.ok) {
         throw new Error(`Error: ${response.status}`);
       }
-      
+
       const data = await response.json();
       console.log("Deployments from API:", data);
       setDeployments(data);
-      
+
       // Extract all unique column names from the deployments
       if (data.length > 0) {
         const columns = getColumnHeaders(data);
         setAllColumns(columns);
       }
-      
+
       setError(null);
     } catch (err) {
       if (showLoading) {
@@ -80,36 +82,48 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
   useEffect(() => {
     fetchDeployments();
   }, [fetchDeployments]);
-
+  const filteredDeployments = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return deployments; // Return all if no search
+    }
+    
+    const query = searchQuery.toLowerCase();
+    return deployments.filter(deployment => {
+      // Search through all string fields
+      return Object.entries(deployment).some(([_, value]) => {
+        return typeof value === 'string' && value.toLowerCase().includes(query);
+      });
+    });
+  }, [deployments, searchQuery]);
   // Helper function to set default columns
   const setDefaultColumns = useCallback(() => {
     // Default to show important deployment columns
     const defaultVisibleColumns = [
-      "Status", 
-      "Assigned To", 
-      "Location", 
+      "Status",
+      "Assigned To",
+      "Location",
       "Deployment ID",
       "Deployment Type",
-      "New Model", 
-      "Technician", 
-      "Deployment Date", 
+      "New Model",
+      "Technician",
+      "Deployment Date",
       "Priority"
     ];
-    
+
     // Filter to only include columns that actually exist in the data
-    const availableDefaultColumns = defaultVisibleColumns.filter(col => 
+    const availableDefaultColumns = defaultVisibleColumns.filter(col =>
       allColumns.includes(col)
     );
-    
+
     setVisibleColumns(availableDefaultColumns);
-    
+
     // Initialize visibility map
     const visibilityMap: Record<string, boolean> = {};
     allColumns.forEach(col => {
       visibilityMap[col] = availableDefaultColumns.includes(col);
     });
     setColumnVisibilityMap(visibilityMap);
-    
+
     console.log('Set default column preferences');
   }, [allColumns]);
 
@@ -120,20 +134,20 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
       try {
         // Attempt to load saved preferences from localStorage
         const savedPrefsJson = localStorage.getItem(COLUMN_PREFS_STORAGE_KEY);
-        
+
         if (savedPrefsJson) {
           // Parse the saved preferences
           const savedPrefs = JSON.parse(savedPrefsJson);
-          
+
           // Only use saved columns that still exist in current data
           const validColumns = savedPrefs.visibleColumns.filter(
             (col: string) => allColumns.includes(col)
           );
-          
+
           if (validColumns.length > 0) {
             // Set visible columns to the saved preferences
             setVisibleColumns(validColumns);
-            
+
             // Recreate the visibility map based on saved preferences
             const newVisibilityMap: Record<string, boolean> = {};
             allColumns.forEach(col => {
@@ -149,7 +163,7 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
           // If no saved preferences, set defaults
           setDefaultColumns();
         }
-        
+
         // Mark preferences as loaded
         setHasLoadedPreferences(true);
       } catch (error) {
@@ -181,7 +195,7 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
   // Extract column names from deployments
   const getColumnHeaders = (data: DeploymentData[]) => {
     if (!data || data.length === 0) return [];
-    
+
     // Get all unique keys from all deployments to ensure all columns are shown
     const allKeys = new Set<string>();
     data.forEach(deployment => {
@@ -189,11 +203,11 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
         allKeys.add(key);
       });
     });
-    
+
     // Convert to array and ensure certain critical columns appear first
     const priorityColumns = ["Deployment ID", "Status", "Assigned To", "Location"];
     const headers = Array.from(allKeys);
-    
+
     // Remove priority columns from original order
     priorityColumns.forEach(col => {
       const index = headers.indexOf(col);
@@ -201,7 +215,7 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
         headers.splice(index, 1);
       }
     });
-    
+
     // Add priority columns at the beginning
     return [...priorityColumns.filter(col => allKeys.has(col)), ...headers];
   };
@@ -213,7 +227,7 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
       ...prev,
       [column]: !prev[column]
     }));
-    
+
     // Update visible columns based on the fixed order from allColumns
     setVisibleColumns(allColumns.filter(col => {
       if (col === column) {
@@ -236,20 +250,20 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
   // Start editing a deployment
   const handleEdit = (deployment: DeploymentData) => {
     console.log("Editing deployment:", deployment);
-    
+
     // Create a deep copy to avoid reference issues
     const editData = { ...deployment };
-    
+
     // If the ID is missing, but we have Deployment ID, use that instead
     if (!editData.id && editData["Deployment ID"]) {
       editData.id = editData["Deployment ID"];
     }
-    
+
     // Make sure Deployment ID is preserved in both places
     if (editData.id && !editData["Deployment ID"]) {
       editData["Deployment ID"] = editData.id;
     }
-    
+
     setEditingDeployment(editData);
   };
 
@@ -262,10 +276,10 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
   const handleSaveDeployment = async (deploymentToSave: DeploymentData, changedFields: string[]) => {
     try {
       setLoading(true);
-      
+
       console.log("Saving deployment data:", deploymentToSave);
       console.log("Changed fields:", changedFields);
-      
+
       // Ensure the ID is properly set
       if (!deploymentToSave.id && deploymentToSave["Deployment ID"]) {
         deploymentToSave.id = deploymentToSave["Deployment ID"];
@@ -274,7 +288,7 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
       } else if (!deploymentToSave.id && !deploymentToSave["Deployment ID"]) {
         throw new Error("Missing ID: Deployment must have either 'id' or 'Deployment ID'");
       }
-      
+
       const response = await fetch("/api/deployments", {
         method: "PUT",
         headers: {
@@ -285,17 +299,17 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
           changedFields: changedFields
         }),
       });
-  
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error("API Error Response:", errorText);
         throw new Error(`Error ${response.status}: ${errorText}`);
       }
-  
+
       // Reset editing state
       setEditingDeployment(null);
       setError(null);
-      
+
       // Refresh data to ensure we have the latest changes
       fetchDeployments(false);
     } catch (err) {
@@ -326,7 +340,7 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
 
   // Get ordered visible columns
   const orderedVisibleColumns = getOrderedVisibleColumns();
-  
+
   const getColumnWidth = (column: string) => {
     // Set appropriate widths based on column content
     switch (column) {
@@ -386,7 +400,7 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
             )}
           </button>
         </div>
-        
+
         {/* Column filter button */}
         <button
           onClick={() => setShowColumnFilter(!showColumnFilter)}
@@ -402,9 +416,9 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
 
       {/* Column filter panel */}
       {showColumnFilter && (
-        <div 
+        <div
           className="mb-4 p-4 border rounded-md"
-          style={{ 
+          style={{
             backgroundColor: themeObject.cardBackground,
             borderColor: themeObject.border,
             color: themeObject.text
@@ -424,8 +438,8 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
               <div key={column} className="inline-flex items-center">
                 <label className="flex items-center space-x-2 cursor-pointer px-3 py-1 rounded-md"
                   style={{
-                    backgroundColor: columnVisibilityMap[column] 
-                      ? (theme === 'dark' ? '#1E40AF' : '#DBEAFE') 
+                    backgroundColor: columnVisibilityMap[column]
+                      ? (theme === 'dark' ? '#1E40AF' : '#DBEAFE')
                       : (theme === 'dark' ? '#374151' : '#F3F4F6'),
                     color: themeObject.text
                   }}
@@ -444,19 +458,30 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
         </div>
       )}
 
+      <DeploymentSearch
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+      />
+
+{searchQuery && (
+  <div className="text-sm mb-2">
+    Found {filteredDeployments.length} matching deployments
+  </div>
+)}
+
       {/* Table container with horizontal scrolling */}
-      <div 
+      <div
         ref={tableContainerRef}
         className="w-full overflow-auto border rounded-lg shadow-sm"
-        style={{ 
+        style={{
           maxHeight: "70vh",
           backgroundColor: themeObject.cardBackground,
           borderColor: themeObject.border
         }}
       >
         {/* Deployment table */}
-        <table 
-          className="min-w-full border-collapse table-fixed" 
+        <table
+          className="min-w-full border-collapse table-fixed"
           style={{ color: themeObject.text }}
         >
           <thead className="sticky top-0 z-10" style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#f8fafc' }}>
@@ -465,7 +490,7 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
                 <th
                   key={column}
                   className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b border-r"
-                  style={{ 
+                  style={{
                     borderColor: themeObject.border,
                     minWidth: getColumnWidth(column)
                   }}
@@ -474,9 +499,9 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
                 </th>
               ))}
               {allowEdit && (
-                <th 
+                <th
                   className="px-6 py-3 text-center border-b sticky right-0"
-                  style={{ 
+                  style={{
                     borderColor: themeObject.border,
                     backgroundColor: theme === 'dark' ? '#1f2937' : '#f8fafc',
                     width: actionColumnWidth,
@@ -489,49 +514,49 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-          {deployments.map((deployment, index) => {
-            // Create a unique identifier for the row that works across all cases
-            const rowId = deployment.id || deployment["Deployment ID"] || `deployment-${index}`;
-            
-            return (
-              <tr 
-                key={rowId}
-                className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                style={{ backgroundColor: theme === 'dark' ? '#1e293b' : 'white' }}
-              >
-                {orderedVisibleColumns.map((column) => (
-                  <td 
-                    key={column} 
-                    className="px-6 py-4 border-b border-r"
-                    style={{ 
-                      borderColor: themeObject.border,
-                      whiteSpace: column.includes('Notes') ? 'normal' : 'nowrap'
-                    }}
-                  >
-                    {deployment[column as keyof DeploymentData] || ""}
-                  </td>
-                ))}
-                {allowEdit && (
-                  <td 
-                    className="px-6 py-4 text-center border-b sticky right-0"
-                    style={{ 
-                      borderColor: themeObject.border,
-                      backgroundColor: theme === 'dark' ? '#1e293b' : 'white',
-                      width: actionColumnWidth
-                    }}
-                  >
-                    <button
-                      onClick={() => handleEdit(deployment)}
-                      className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition"
-                      disabled={loading || editingDeployment !== null}
+            {filteredDeployments.map((deployment, index) => {
+              // Create a unique identifier for the row that works across all cases
+              const rowId = deployment.id || deployment["Deployment ID"] || `deployment-${index}`;
+
+              return (
+                <tr
+                  key={rowId}
+                  className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                  style={{ backgroundColor: theme === 'dark' ? '#1e293b' : 'white' }}
+                >
+                  {orderedVisibleColumns.map((column) => (
+                    <td
+                      key={column}
+                      className="px-6 py-4 border-b border-r"
+                      style={{
+                        borderColor: themeObject.border,
+                        whiteSpace: column.includes('Notes') ? 'normal' : 'nowrap'
+                      }}
                     >
-                      Edit
-                    </button>
-                  </td>
-                )}
-              </tr>
-            );
-          })}
+                      {deployment[column as keyof DeploymentData] || ""}
+                    </td>
+                  ))}
+                  {allowEdit && (
+                    <td
+                      className="px-6 py-4 text-center border-b sticky right-0"
+                      style={{
+                        borderColor: themeObject.border,
+                        backgroundColor: theme === 'dark' ? '#1e293b' : 'white',
+                        width: actionColumnWidth
+                      }}
+                    >
+                      <button
+                        onClick={() => handleEdit(deployment)}
+                        className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition"
+                        disabled={loading || editingDeployment !== null}
+                      >
+                        Edit
+                      </button>
+                    </td>
+                  )}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
 
@@ -540,7 +565,7 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
           <div className="text-center py-8">No deployment data available.</div>
         )}
       </div>
-      
+
       {/* Last update notification */}
       <div className="mt-4 text-sm text-gray-500" style={{ color: theme === 'dark' ? '#9CA3AF' : '#6B7280' }}>
         <p>Click the refresh button to get the latest data. Last updated: {new Date().toLocaleTimeString()}</p>
@@ -548,12 +573,12 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
 
       {/* Edit Deployment Modal */}
       {editingDeployment && (
-  <ImprovedEditDeploymentModal
-    deployment={editingDeployment}
-    onClose={handleCloseModal}
-    onSave={handleSaveDeployment}
-  />
-)}
+        <ImprovedEditDeploymentModal
+          deployment={editingDeployment}
+          onClose={handleCloseModal}
+          onSave={handleSaveDeployment}
+        />
+      )}
     </div>
   );
 }
