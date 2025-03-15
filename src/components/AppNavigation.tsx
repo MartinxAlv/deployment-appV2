@@ -1,4 +1,3 @@
-// src/components/AppNavigation.tsx
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
@@ -120,7 +119,7 @@ export default function AppNavigation() {
       </div>
       
       {/* Bottom navigation menu */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-10">
+      <div className={`fixed bottom-0 left-0 right-0 ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-t z-10`}>
         <div className="flex justify-around">
           {filteredNavItems.map((item) => {
             const isActive = pathname === item.path;
@@ -133,7 +132,9 @@ export default function AppNavigation() {
                 className={`flex flex-col items-center py-2 px-3 rounded-t-lg transition-all duration-300 ${
                   isActive ? 
                     `${activeGradientClass} text-white -mt-2 mb-0.5 shadow-lg` : 
-                    'text-gray-600 dark:text-gray-400 hover:text-blue-500 dark:hover:text-blue-300'
+                    theme === 'dark' ? 
+                      'text-gray-400 hover:text-blue-300' : 
+                      'text-gray-600 hover:text-blue-500'
                 }`}
               >
                 {item.icon}
