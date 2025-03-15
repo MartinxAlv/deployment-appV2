@@ -1,3 +1,4 @@
+// src/app/deployments/page.tsx
 "use client";
 
 import { useSession } from "next-auth/react";
@@ -7,7 +8,7 @@ import DeploymentTable from "@/components/DeploymentTable";
 import { useTheme } from "@/components/ThemeProvider";
 
 export default function DeploymentsPage() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
   const { themeObject } = useTheme();
 

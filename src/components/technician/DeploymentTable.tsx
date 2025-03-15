@@ -1,7 +1,7 @@
 // src/components/technician/DeploymentTable.tsx
 import React from 'react';
 import { DeploymentData } from '@/lib/googleSheetsService';
-import { StatusBadge, PriorityBadge } from './StatusBadges';
+import { StatusBadge } from './StatusBadges';
 
 interface DeploymentTableProps {
   deployments: DeploymentData[];
@@ -33,20 +33,6 @@ const DeploymentTable: React.FC<DeploymentTableProps> = ({
   onEditDeployment,
   themeObject
 }) => {
-  // Function to format a date string
-  const formatDate = (dateStr: string | undefined) => {
-    if (!dateStr) return '-';
-    
-    try {
-      const date = new Date(dateStr);
-      if (isNaN(date.getTime())) return dateStr;
-      return date.toLocaleDateString();
-    } catch (error) {
-      console.warn("Date formatting error:", error);
-      return dateStr;
-    }
-  };
-
   // Handle sort click
   const handleSortClick = (field: string) => {
     if (field === sortField) {
