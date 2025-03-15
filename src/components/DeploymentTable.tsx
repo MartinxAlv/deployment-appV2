@@ -3,8 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { DeploymentData } from "@/lib/googleSheetsService";
 import { useTheme } from "@/components/ThemeProvider";
-import EditDeploymentModal from "@/components/EditDeploymentModal";
-
+import ImprovedEditDeploymentModal from "@/components/ImprovedEditDeploymentModal";
 interface DeploymentTableProps {
   allowEdit?: boolean;
 }
@@ -260,34 +259,31 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
   };
 
   // Save edited deployment
-  const handleSaveDeployment = async (deploymentToSave: DeploymentData) => {
+  const handleSaveDeployment = async (deploymentToSave: DeploymentData, changedFields: string[]) => {
     try {
       setLoading(true);
       
-      // Add this debugging line to see exactly what's being sent
-      console.log("Deployment data being saved:", JSON.stringify(deploymentToSave));
-      
-      // Make a complete copy to avoid reference issues
-      const deploymentWithId = { ...deploymentToSave };
+      console.log("Saving deployment data:", deploymentToSave);
+      console.log("Changed fields:", changedFields);
       
       // Ensure the ID is properly set
-      if (!deploymentWithId.id && deploymentWithId["Deployment ID"]) {
-        deploymentWithId.id = deploymentWithId["Deployment ID"];
-      } else if (!deploymentWithId["Deployment ID"] && deploymentWithId.id) {
-        deploymentWithId["Deployment ID"] = deploymentWithId.id;
-      } else if (!deploymentWithId.id && !deploymentWithId["Deployment ID"]) {
+      if (!deploymentToSave.id && deploymentToSave["Deployment ID"]) {
+        deploymentToSave.id = deploymentToSave["Deployment ID"];
+      } else if (!deploymentToSave["Deployment ID"] && deploymentToSave.id) {
+        deploymentToSave["Deployment ID"] = deploymentToSave.id;
+      } else if (!deploymentToSave.id && !deploymentToSave["Deployment ID"]) {
         throw new Error("Missing ID: Deployment must have either 'id' or 'Deployment ID'");
       }
-      
-      // Double-check the ID is present
-      console.log("ID being used:", deploymentWithId.id);
       
       const response = await fetch("/api/deployments", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(deploymentWithId),
+        body: JSON.stringify({
+          deploymentData: deploymentToSave,
+          changedFields: changedFields
+        }),
       });
   
       if (!response.ok) {
@@ -552,12 +548,12 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
 
       {/* Edit Deployment Modal */}
       {editingDeployment && (
-        <EditDeploymentModal
-          deployment={editingDeployment}
-          onClose={handleCloseModal}
-          onSave={handleSaveDeployment}
-        />
-      )}
+  <ImprovedEditDeploymentModal
+    deployment={editingDeployment}
+    onClose={handleCloseModal}
+    onSave={handleSaveDeployment}
+  />
+)}
     </div>
   );
 }

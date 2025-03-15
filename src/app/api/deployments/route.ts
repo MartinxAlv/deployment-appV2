@@ -87,7 +87,7 @@ export async function POST(request: Request) {
   }
 }
 
-// MODIFIED: PUT handler to support partial updates with changedFields parameter
+// UPDATED: PUT handler to support partial updates with changedFields parameter
 export async function PUT(request: Request) {
   try {
     // Check authentication
@@ -98,8 +98,26 @@ export async function PUT(request: Request) {
     }
     
     // Parse the request body
-    const deploymentData = await request.json();
-    console.log("Received deployment data:", deploymentData);
+    const requestData = await request.json();
+    let deploymentData: DeploymentData;
+    let changedFields: string[] = [];
+    
+    // Handle both formats for backward compatibility:
+    // 1. New format: { deploymentData: {...}, changedFields: [...] }
+    // 2. Old format: direct deployment object
+    if (requestData.deploymentData && Array.isArray(requestData.changedFields)) {
+      deploymentData = requestData.deploymentData;
+      changedFields = requestData.changedFields;
+      console.log("Received deployment with changed fields:", changedFields);
+    } else {
+      // Legacy format - assume the whole object needs updating
+      deploymentData = requestData;
+      // In this case, we'll update all fields except id and Deployment ID
+      changedFields = Object.keys(deploymentData).filter(
+        key => key !== 'id' && key !== 'Deployment ID'
+      );
+      console.log("Received legacy deployment update format - updating all fields");
+    }
     
     // Validate the deployment data has an ID
     if (!deploymentData.id && !deploymentData["Deployment ID"]) {
@@ -110,27 +128,33 @@ export async function PUT(request: Request) {
     }
     
     // Ensure we have both id formats for consistency
-    const deploymentWithId = { ...deploymentData };
-    if (!deploymentWithId.id && deploymentWithId["Deployment ID"]) {
-      deploymentWithId.id = deploymentWithId["Deployment ID"];
-    } else if (!deploymentWithId["Deployment ID"] && deploymentWithId.id) {
-      deploymentWithId["Deployment ID"] = deploymentWithId.id;
+    if (!deploymentData.id && deploymentData["Deployment ID"]) {
+      deploymentData.id = deploymentData["Deployment ID"];
+    } else if (!deploymentData["Deployment ID"] && deploymentData.id) {
+      deploymentData["Deployment ID"] = deploymentData.id;
     }
     
     // Now update the deployment
     try {
-      await deploymentSheetService.updateDeployment(deploymentWithId);
+      if (changedFields.length > 0) {
+        // Use the optimized update method if we have specific fields to update
+        await deploymentSheetService.updateDeploymentFields(deploymentData, changedFields);
+      } else {
+        // Fall back to full update if no changed fields specified (should be rare)
+        await deploymentSheetService.updateDeployment(deploymentData);
+      }
       
       return NextResponse.json({ 
         message: 'Deployment updated successfully',
-        deploymentId: deploymentWithId.id || deploymentWithId["Deployment ID"]
+        deploymentId: deploymentData.id || deploymentData["Deployment ID"],
+        fieldsUpdated: changedFields.length
       });
     } catch (updateError) {
       // Handle specific errors
       if (updateError instanceof Error && 
           updateError.message.includes("not found in the spreadsheet")) {
         return NextResponse.json({ 
-          error: `Deployment with ID "${deploymentWithId.id}" not found. Please verify the ID is correct.`
+          error: `Deployment with ID "${deploymentData.id}" not found. Please verify the ID is correct.`
         }, { status: 404 });
       }
       
