@@ -9,14 +9,14 @@ import { DeploymentData } from "@/lib/googleSheetsService";
 import TechnicianHeader from "@/components/technician/TechnicianHeader";
 import DeploymentFilters from "@/components/technician/DeploymentFilters";
 import DeploymentTable from "@/components/technician/DeploymentTable";
-import DeploymentDetailsModal from "@/components/technician/DeploymentDetailsModal";
+import TechnicianEditModal from "@/components/technician/TechnicianEditModal";
 import LoadingState from "@/components/technician/LoadingState";
 import ErrorState from "@/components/technician/ErrorState";
 import EmptyState from "@/components/technician/EmptyState";
 
 export default function TechnicianDeploymentsPage() {
-  // State for deployment details modal
-  const [selectedDeployment, setSelectedDeployment] = useState<DeploymentData | null>(null);
+  // State for deployment edit modal
+  const [editingDeployment, setEditingDeployment] = useState<DeploymentData | null>(null);
   const { status } = useSession();
   const router = useRouter();
   const { themeObject } = useTheme();
@@ -89,14 +89,49 @@ export default function TechnicianDeploymentsPage() {
     return Array.from(techSet).sort();
   };
   
-  // View deployment details
-  const viewDeploymentDetails = (deployment: DeploymentData) => {
-    setSelectedDeployment(deployment);
+  // Handle edit deployment
+  const handleEditDeployment = (deployment: DeploymentData) => {
+    setEditingDeployment(deployment);
   };
   
-  // Close deployment details modal
-  const closeDeploymentDetails = () => {
-    setSelectedDeployment(null);
+  // Close edit modal
+  const closeEditModal = () => {
+    setEditingDeployment(null);
+  };
+
+  // Save edited deployment
+  const handleSaveDeployment = async (deploymentToSave: DeploymentData) => {
+    try {
+      setIsRefreshing(true);
+      
+      console.log("Saving deployment data:", deploymentToSave);
+      
+      const response = await fetch("/api/deployments", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(deploymentToSave),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Error ${response.status}: ${errorText}`);
+      }
+
+      // Reset editing state
+      setEditingDeployment(null);
+      setError(null);
+      
+      // Refresh data to ensure we have the latest changes
+      await refreshData();
+    } catch (err) {
+      setError("Failed to save changes: " + (err instanceof Error ? err.message : String(err)));
+      console.error("Error updating deployment:", err);
+      throw err; // Re-throw to be caught by the modal
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   // Refresh the deployments data
@@ -192,7 +227,7 @@ export default function TechnicianDeploymentsPage() {
       className="flex flex-col min-h-screen p-6 pt-16"
       style={{ backgroundColor: themeObject.background, color: themeObject.text }}
     >
-      {/* Header with Navigation and Controls - Changed z-index to 10 */}
+      {/* Header with Navigation and Controls */}
       <TechnicianHeader 
         onNavigateBack={() => router.push('/dashboard')}
         onRefresh={refreshData}
@@ -235,7 +270,7 @@ export default function TechnicianDeploymentsPage() {
         />
       )}
       
-      {/* Deployments List */}
+      {/* Deployments List with Edit Functionality */}
       {!loading && !error && selectedTechnician && filteredAndSortedDeployments.length > 0 && (
         <DeploymentTable
           deployments={filteredAndSortedDeployments}
@@ -244,16 +279,17 @@ export default function TechnicianDeploymentsPage() {
           sortDirection={sortDirection}
           onSortFieldChange={setSortField}
           onSortDirectionChange={setSortDirection}
-          onViewDetails={viewDeploymentDetails}
+          onEditDeployment={handleEditDeployment}
           themeObject={themeObject}
         />
       )}
 
-      {/* Deployment Details Modal */}
-      {selectedDeployment && (
-        <DeploymentDetailsModal 
-          deployment={selectedDeployment}
-          onClose={closeDeploymentDetails}
+      {/* Edit Deployment Modal */}
+      {editingDeployment && (
+        <TechnicianEditModal 
+          deployment={editingDeployment}
+          onClose={closeEditModal}
+          onSave={handleSaveDeployment}
         />
       )}
     </div>

@@ -162,11 +162,13 @@ export default function TechnicianEditModal({
               />
             </div>
             
-            {/* Map through all editable fields - including empty ones */}
+            {/* Map through all editable fields */}
             {editableFields.map((field) => {
               const inputType = getInputType(field);
               
-              // Always show all editable fields, even if they're empty
+              // Skip if not in formData and not notes field
+              if (!formData[field] && !field.includes('Notes')) return null;
+
               return (
                 <div key={field} className={inputType === "textarea" ? "col-span-1 md:col-span-2" : ""}>
                   <label className="block font-medium mb-1" style={{ color: themeObject.text }}>

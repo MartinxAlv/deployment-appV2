@@ -1,3 +1,4 @@
+// src/components/technician/DeploymentTable.tsx
 import React from 'react';
 import { DeploymentData } from '@/lib/googleSheetsService';
 import { StatusBadge, PriorityBadge } from './StatusBadges';
@@ -9,7 +10,7 @@ interface DeploymentTableProps {
   sortDirection: 'asc' | 'desc';
   onSortFieldChange: (field: string) => void;
   onSortDirectionChange: (direction: 'asc' | 'desc') => void;
-  onViewDetails: (deployment: DeploymentData) => void;
+  onEditDeployment: (deployment: DeploymentData) => void;
   themeObject: {
     background: string;
     text: string;
@@ -29,7 +30,7 @@ const DeploymentTable: React.FC<DeploymentTableProps> = ({
   sortDirection,
   onSortFieldChange,
   onSortDirectionChange,
-  onViewDetails,
+  onEditDeployment,
   themeObject
 }) => {
   // Function to format a date string
@@ -72,16 +73,19 @@ const DeploymentTable: React.FC<DeploymentTableProps> = ({
 
   const isDark = themeObject.background === '#121212';
 
-  // Column definitions
+  // Updated column definitions as requested
   const columns = [
     { field: "Status", label: "Status", render: (d: DeploymentData) => <StatusBadge status={d.Status} /> },
-    { field: "Deployment ID", label: "ID", render: (d: DeploymentData) => d["Deployment ID"] || '-' },
-    { field: "Deployment Date", label: "Date", render: (d: DeploymentData) => formatDate(d["Deployment Date"]) },
+    { field: "Assigned To", label: "Assigned To", render: (d: DeploymentData) => d["Assigned To"] || '-' },
     { field: "Location", label: "Location", render: (d: DeploymentData) => d.Location || '-' },
-    { field: "Assigned To", label: "User", render: (d: DeploymentData) => d["Assigned To"] || '-' },
-    { field: "New Device Type", label: "Device Type", render: (d: DeploymentData) => d["New Device Type"] || d["Deployment Type"] || '-' },
-    { field: "New Model", label: "Model", render: (d: DeploymentData) => d["New Model"] || '-' },
-    { field: "Priority", label: "Priority", render: (d: DeploymentData) => <PriorityBadge priority={d.Priority} /> }
+    { field: "Current Model", label: "Current Model", render: (d: DeploymentData) => d["Current Model"] || '-' },
+    { field: "Current SN", label: "Current SN", render: (d: DeploymentData) => d["Current SN"] || '-' },
+    { field: "New Model", label: "New Model", render: (d: DeploymentData) => d["New Model"] || '-' },
+    { field: "New SN", label: "New SN", render: (d: DeploymentData) => d["New SN"] || '-' },
+    { field: "New Monitor Type", label: "Monitor Type", render: (d: DeploymentData) => d["New Monitor Type"] || '-' },
+    { field: "New Monitor 1 SN", label: "Monitor 1 SN", render: (d: DeploymentData) => d["New Monitor 1 SN"] || '-' },
+    { field: "New Monitor 2 SN", label: "Monitor 2 SN", render: (d: DeploymentData) => d["New Monitor 2 SN"] || '-' },
+    { field: "New Other", label: "Other", render: (d: DeploymentData) => d["New Other"] || '-' }
   ];
 
   return (
@@ -140,7 +144,7 @@ const DeploymentTable: React.FC<DeploymentTableProps> = ({
                 ))}
                 <td className="px-4 py-3 whitespace-nowrap text-center">
                   <button
-                    onClick={() => onViewDetails(deployment)}
+                    onClick={() => onEditDeployment(deployment)}
                     className="inline-flex items-center px-3 py-1 rounded-md text-sm font-medium transition"
                     style={{ 
                       backgroundColor: themeObject.button,
@@ -148,10 +152,9 @@ const DeploymentTable: React.FC<DeploymentTableProps> = ({
                     }}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
-                    View
+                    Edit
                   </button>
                 </td>
               </tr>
