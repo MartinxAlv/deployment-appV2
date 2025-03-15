@@ -1,6 +1,12 @@
 "use client";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTheme } from "@/components/ThemeProvider";
+
+interface UserData {
+  role?: string;
+  name?: string;
+  // Add other possible properties
+}
 
 interface UserHistoryRecord {
   id: string;
@@ -9,8 +15,8 @@ interface UserHistoryRecord {
   performed_by_email: string;
   target_user_id: string;
   target_user_email: string;
-  previous_data: any;
-  new_data: any;
+  previous_data: UserData | null;
+  new_data: UserData | null;
   timestamp: string;
 }
 
@@ -26,12 +32,8 @@ export default function UserHistoryView() {
   
   const pageSize = 10;
 
-  // Fetch history data
-  useEffect(() => {
-    fetchHistory();
-  }, [filter, page]);
-
-  const fetchHistory = async () => {
+  // Fetch history data using useCallback to avoid dependency array issues
+  const fetchHistory = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -64,7 +66,12 @@ export default function UserHistoryView() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filter, page, pageSize]);
+
+  // Fetch history when component mounts and when dependencies change
+  useEffect(() => {
+    fetchHistory();
+  }, [fetchHistory]);
 
   const handleFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setFilter(e.target.value);
@@ -96,7 +103,7 @@ export default function UserHistoryView() {
         throw new Error(errorData.error || `Error ${response.status}`);
       }
       
-      const result = await response.json();
+      // Don't bother parsing the response if you don't need it
       
       // Success! Refresh the history data
       alert("User restored successfully! They will need to reset their password.");
@@ -211,17 +218,18 @@ export default function UserHistoryView() {
                   <td className="px-4 py-3" style={{ color: themeObject.text }}>
                     {record.target_user_email}
                     {record.action_type === 'delete' && (
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
-                        Role: {record.previous_data?.role || 'N/A'}, 
-                        Name: {record.previous_data?.name || 'N/A'}
-                      </div>
-                    )}
-                    {record.action_type === 'create' && (
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
-                        Role: {record.new_data?.role || 'N/A'}, 
-                        Name: {record.new_data?.name || 'N/A'}
-                      </div>
-                    )}
+  <div className="text-xs text-gray-500 dark:text-gray-400">
+    Role: {record.previous_data?.role || 'N/A'}, 
+    Name: {record.previous_data?.name || 'N/A'}
+  </div>
+)}
+
+{record.action_type === 'create' && (
+  <div className="text-xs text-gray-500 dark:text-gray-400">
+    Role: {record.new_data?.role || 'N/A'}, 
+    Name: {record.new_data?.name || 'N/A'}
+  </div>
+)}
                   </td>
                   <td className="px-4 py-3" style={{ color: themeObject.text }}>
                     {record.performed_by_email}

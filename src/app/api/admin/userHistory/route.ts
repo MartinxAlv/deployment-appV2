@@ -104,16 +104,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Can only restore deleted users" }, { status: 400 });
     }
     
-    // Check if the user already exists (might have been restored already)
-    const { data: existingUser, error: existingUserError } = await supabaseAdmin
-      .from('users')
-      .select('user_id')
-      .eq('user_id', historyRecord.target_user_id)
-      .maybeSingle();
-    
-    if (existingUser) {
-      return NextResponse.json({ error: "User already exists", userId: existingUser.user_id }, { status: 400 });
-    }
     
     // Restore the user in auth system first (if they were completely deleted)
     // We'll need to recreate the user with a temporary password
