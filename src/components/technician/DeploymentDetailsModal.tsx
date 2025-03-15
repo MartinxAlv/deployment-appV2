@@ -83,14 +83,14 @@ export default function TechnicianEditModal({
 
   // Status options for the dropdown
   const statusOptions = [
-    "Pending",
-    "Assigned",
-    "In Progress",
+    "Received",
+    "Imaging",
+    "Configuring",
     "Ready to Deploy",
     "Deployed",
-    "Completed",
     "Cancelled",
-    "On Hold"
+    "UNK",
+    "Ordered"
   ];
 
   return (
