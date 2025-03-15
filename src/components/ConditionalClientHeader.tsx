@@ -8,7 +8,7 @@ export default function ConditionalClientHeader() {
   const pathname = usePathname();
   
   // Don't render the ClientHeader on the login page or technician deployments page
-  if (pathname === "/login" || pathname === "/technician-deployments") {
+  if (pathname === "/login" || pathname === "/technician-deployments" || pathname === "/ready-to-deploy") {
     return null;
   }
   
