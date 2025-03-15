@@ -9,6 +9,9 @@ interface DeploymentTableProps {
   allowEdit?: boolean;
 }
 
+// Storage key for localStorage
+const COLUMN_PREFS_STORAGE_KEY = 'deploymentColumnPreferences';
+
 export default function DeploymentTable({ allowEdit = false }: DeploymentTableProps) {
   const [deployments, setDeployments] = useState<DeploymentData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -22,6 +25,7 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
   const [visibleColumns, setVisibleColumns] = useState<string[]>([]);
   const [columnVisibilityMap, setColumnVisibilityMap] = useState<Record<string, boolean>>({});
   const [showColumnFilter, setShowColumnFilter] = useState(false);
+  const [hasLoadedPreferences, setHasLoadedPreferences] = useState(false);
   
   // Refresh state
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -51,36 +55,6 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
       if (data.length > 0) {
         const columns = getColumnHeaders(data);
         setAllColumns(columns);
-        
-        // Initialize visible columns if not set yet
-        if (visibleColumns.length === 0) {
-          // Default to show important deployment columns
-          const defaultVisibleColumns = [
-            "Status", 
-            "Assigned To", 
-            "Location", 
-            "Deployment ID",
-            "Deployment Type",
-            "New Model", 
-            "Technician", 
-            "Deployment Date", 
-            "Priority"
-          ];
-          
-          // Filter to only include columns that actually exist in the data
-          const availableDefaultColumns = defaultVisibleColumns.filter(col => 
-            columns.includes(col)
-          );
-          
-          setVisibleColumns(availableDefaultColumns);
-          
-          // Initialize visibility map
-          const visibilityMap: Record<string, boolean> = {};
-          columns.forEach(col => {
-            visibilityMap[col] = availableDefaultColumns.includes(col);
-          });
-          setColumnVisibilityMap(visibilityMap);
-        }
       }
       
       setError(null);
@@ -101,12 +75,109 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
         setIsRefreshing(false);
       }
     }
-  }, [visibleColumns.length]);
+  }, []);
 
   // Initial data load
   useEffect(() => {
     fetchDeployments();
   }, [fetchDeployments]);
+
+  // Helper function to set default columns
+  const setDefaultColumns = useCallback(() => {
+    // Default to show important deployment columns
+    const defaultVisibleColumns = [
+      "Status", 
+      "Assigned To", 
+      "Location", 
+      "Deployment ID",
+      "Deployment Type",
+      "New Model", 
+      "Technician", 
+      "Deployment Date", 
+      "Priority"
+    ];
+    
+    // Filter to only include columns that actually exist in the data
+    const availableDefaultColumns = defaultVisibleColumns.filter(col => 
+      allColumns.includes(col)
+    );
+    
+    setVisibleColumns(availableDefaultColumns);
+    
+    // Initialize visibility map
+    const visibilityMap: Record<string, boolean> = {};
+    allColumns.forEach(col => {
+      visibilityMap[col] = availableDefaultColumns.includes(col);
+    });
+    setColumnVisibilityMap(visibilityMap);
+    
+    console.log('Set default column preferences');
+  }, [allColumns]);
+
+  // Load saved column preferences
+  useEffect(() => {
+    // Only run this once when allColumns are available and preferences haven't been loaded yet
+    if (allColumns.length > 0 && !hasLoadedPreferences) {
+      try {
+        // Attempt to load saved preferences from localStorage
+        const savedPrefsJson = localStorage.getItem(COLUMN_PREFS_STORAGE_KEY);
+        
+        if (savedPrefsJson) {
+          // Parse the saved preferences
+          const savedPrefs = JSON.parse(savedPrefsJson);
+          
+          // Only use saved columns that still exist in current data
+          const validColumns = savedPrefs.visibleColumns.filter(
+            (col: string) => allColumns.includes(col)
+          );
+          
+          if (validColumns.length > 0) {
+            // Set visible columns to the saved preferences
+            setVisibleColumns(validColumns);
+            
+            // Recreate the visibility map based on saved preferences
+            const newVisibilityMap: Record<string, boolean> = {};
+            allColumns.forEach(col => {
+              newVisibilityMap[col] = validColumns.includes(col);
+            });
+            setColumnVisibilityMap(newVisibilityMap);
+            console.log('Loaded column preferences from localStorage');
+          } else {
+            // If no valid columns found, fall back to defaults
+            setDefaultColumns();
+          }
+        } else {
+          // If no saved preferences, set defaults
+          setDefaultColumns();
+        }
+        
+        // Mark preferences as loaded
+        setHasLoadedPreferences(true);
+      } catch (error) {
+        console.error('Error loading column preferences:', error);
+        setDefaultColumns();
+        setHasLoadedPreferences(true);
+      }
+    }
+  }, [allColumns, hasLoadedPreferences, setDefaultColumns]);
+
+  // Save preferences when they change
+  useEffect(() => {
+    // Only save if we've already loaded preferences (prevents overwriting on initial load)
+    // and we have visible columns selected
+    if (hasLoadedPreferences && visibleColumns.length > 0) {
+      try {
+        const prefsToSave = {
+          visibleColumns: visibleColumns,
+          timestamp: new Date().toISOString()
+        };
+        localStorage.setItem(COLUMN_PREFS_STORAGE_KEY, JSON.stringify(prefsToSave));
+        console.log('Saved column preferences to localStorage');
+      } catch (error) {
+        console.error('Error saving column preferences:', error);
+      }
+    }
+  }, [visibleColumns, hasLoadedPreferences]);
 
   // Extract column names from deployments
   const getColumnHeaders = (data: DeploymentData[]) => {
@@ -137,7 +208,7 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
   };
 
   // Toggle column visibility
-  const toggleColumnVisibility = (column: string) => {
+  const toggleColumnVisibility = useCallback((column: string) => {
     // Update visibility map
     setColumnVisibilityMap(prev => ({
       ...prev,
@@ -151,38 +222,12 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
       }
       return columnVisibilityMap[col]; // Keep others the same
     }));
-  };
+  }, [allColumns, columnVisibilityMap]);
 
   // Reset column visibility to default
-  const resetColumnVisibility = () => {
-    // Default to show important deployment columns
-    const defaultVisibleColumns = [
-      "Status", 
-      "Assigned To", 
-      "Location", 
-      "Deployment ID",
-      "Deployment Type",
-      "New Model", 
-      "Technician", 
-      "Deployment Date", 
-      "Priority"
-    ];
-    
-    // Filter to only include columns that actually exist in the data
-    const availableDefaultColumns = defaultVisibleColumns.filter(col => 
-      allColumns.includes(col)
-    );
-    
-    // Update visibility map
-    const newVisibilityMap: Record<string, boolean> = {};
-    allColumns.forEach(col => {
-      newVisibilityMap[col] = availableDefaultColumns.includes(col);
-    });
-    setColumnVisibilityMap(newVisibilityMap);
-    
-    // Update visible columns
-    setVisibleColumns(availableDefaultColumns);
-  };
+  const resetColumnVisibility = useCallback(() => {
+    setDefaultColumns();
+  }, [setDefaultColumns]);
 
   // Get display columns in the correct order
   const getOrderedVisibleColumns = () => {
