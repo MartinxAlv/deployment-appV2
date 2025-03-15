@@ -1,3 +1,4 @@
+// src/app/technician-deployments/page.tsx
 "use client";
 
 import { useSession } from "next-auth/react";
@@ -16,7 +17,7 @@ import EmptyState from "@/components/technician/EmptyState";
 export default function TechnicianDeploymentsPage() {
   // State for deployment details modal
   const [selectedDeployment, setSelectedDeployment] = useState<DeploymentData | null>(null);
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
   const { themeObject } = useTheme();
   const [deployments, setDeployments] = useState<DeploymentData[]>([]);
@@ -138,7 +139,7 @@ export default function TechnicianDeploymentsPage() {
       const query = searchQuery.toLowerCase();
       result = result.filter(d => {
         // Search through all string fields
-        return Object.entries(d).some(([key, value]) => {
+        return Object.entries(d).some(([, value]) => {
           return typeof value === 'string' && value.toLowerCase().includes(query);
         });
       });
@@ -191,13 +192,14 @@ export default function TechnicianDeploymentsPage() {
       className="flex flex-col min-h-screen p-6 pt-16"
       style={{ backgroundColor: themeObject.background, color: themeObject.text }}
     >
-      {/* Header with Navigation and Controls */}
+      {/* Header with Navigation and Controls - Changed z-index to 10 */}
       <TechnicianHeader 
         onNavigateBack={() => router.push('/dashboard')}
         onRefresh={refreshData}
         isRefreshing={isRefreshing}
       />
       
+      {/* Added padding to avoid overlap with the theme toggle and logout buttons */}
       <h1 className="text-2xl font-bold mb-6 mt-20 text-center">Technician Deployments</h1>
       
       {/* Filters Section */}
