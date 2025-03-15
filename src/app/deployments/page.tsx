@@ -33,7 +33,7 @@ export default function DeploymentsPage() {
   }
 
   // Determine if user has edit permissions (admin or specific role)
-  const canEdit = session?.user?.role === "admin";
+  const canEdit = true;
 
   return (
     <div

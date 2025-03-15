@@ -60,19 +60,23 @@ export default function EditDeploymentModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-
+  
     try {
       setIsLoading(true);
       
       // Make sure the Deployment ID is preserved
       const deploymentToSave = { ...formData };
-      if (!deploymentToSave["Deployment ID"] && deploymentToSave.id) {
+      
+      // Ensure both ID fields are set
+      if (deploymentToSave["Deployment ID"] && !deploymentToSave.id) {
+        deploymentToSave.id = deploymentToSave["Deployment ID"];
+      } else if (deploymentToSave.id && !deploymentToSave["Deployment ID"]) {
         deploymentToSave["Deployment ID"] = deploymentToSave.id;
       }
       
-      // If id is missing but Deployment ID exists, set id
-      if (!deploymentToSave.id && deploymentToSave["Deployment ID"]) {
-        deploymentToSave.id = deploymentToSave["Deployment ID"];
+      // Make sure at least one ID field is set
+      if (!deploymentToSave.id && !deploymentToSave["Deployment ID"]) {
+        throw new Error("Missing deployment ID");
       }
       
       await onSave(deploymentToSave);

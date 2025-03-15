@@ -98,72 +98,45 @@ export async function PUT(request: Request) {
     }
     
     // Parse the request body
-    const { deploymentData, changedFields } = await request.json();
+    const deploymentData = await request.json();
+    console.log("Received deployment data:", deploymentData);
     
-    // Check for both standard id and Deployment ID
+    // Validate the deployment data has an ID
     if (!deploymentData.id && !deploymentData["Deployment ID"]) {
       return NextResponse.json(
-        { error: 'Deployment ID is required' }, 
+        { error: 'Missing ID: Deployment must have either id or Deployment ID' }, 
         { status: 400 }
       );
     }
     
-    // If only Deployment ID is available, copy it to id for consistent handling
-    if (!deploymentData.id && deploymentData["Deployment ID"]) {
-      deploymentData.id = deploymentData["Deployment ID"];
+    // Ensure we have both id formats for consistency
+    const deploymentWithId = { ...deploymentData };
+    if (!deploymentWithId.id && deploymentWithId["Deployment ID"]) {
+      deploymentWithId.id = deploymentWithId["Deployment ID"];
+    } else if (!deploymentWithId["Deployment ID"] && deploymentWithId.id) {
+      deploymentWithId["Deployment ID"] = deploymentWithId.id;
     }
     
-    console.log(`Updating deployment ${deploymentData.id} with ${changedFields?.length || 'all'} fields`);
-    
-    if (changedFields && Array.isArray(changedFields)) {
-      console.log('Changed fields:', changedFields);
+    // Now update the deployment
+    try {
+      await deploymentSheetService.updateDeployment(deploymentWithId);
       
-      // If we have specific fields to update, use the updateDeploymentFields function
-      try {
-        await deploymentSheetService.updateDeploymentFields(deploymentData, changedFields);
-        
+      return NextResponse.json({ 
+        message: 'Deployment updated successfully',
+        deploymentId: deploymentWithId.id || deploymentWithId["Deployment ID"]
+      });
+    } catch (updateError) {
+      // Handle specific errors
+      if (updateError instanceof Error && 
+          updateError.message.includes("not found in the spreadsheet")) {
         return NextResponse.json({ 
-          message: `Deployment updated successfully (${changedFields.length} fields)`,
-          deploymentId: deploymentData.id || deploymentData["Deployment ID"],
-          updatedFields: changedFields
-        });
-      } catch (updateError) {
-        // If the deployment wasn't found, return a more specific error
-        if (updateError instanceof Error && 
-            updateError.message.includes("not found in the spreadsheet")) {
-          return NextResponse.json({ 
-            error: `Deployment with ID "${deploymentData.id}" not found in the spreadsheet. Please verify the ID is correct.`
-          }, { status: 404 });
-        }
-        
-        // For other errors, throw to catch block
-        throw updateError;
+          error: `Deployment with ID "${deploymentWithId.id}" not found. Please verify the ID is correct.`
+        }, { status: 404 });
       }
-    } else {
-      // Fall back to full update if no changedFields provided
-      console.log('Performing full deployment update');
       
-      try {
-        await deploymentSheetService.updateDeployment(deploymentData);
-        
-        return NextResponse.json({ 
-          message: 'Deployment updated successfully (full update)',
-          deploymentId: deploymentData.id || deploymentData["Deployment ID"]
-        });
-      } catch (updateError) {
-        // If the deployment wasn't found, return a more specific error
-        if (updateError instanceof Error && 
-            updateError.message.includes("not found in the spreadsheet")) {
-          return NextResponse.json({ 
-            error: `Deployment with ID "${deploymentData.id}" not found in the spreadsheet. Please verify the ID is correct.`
-          }, { status: 404 });
-        }
-        
-        // For other errors, throw to catch block
-        throw updateError;
-      }
+      // For other errors, throw to catch block
+      throw updateError;
     }
-    
   } catch (error) {
     console.error('Error updating deployment:', error);
     return NextResponse.json(
