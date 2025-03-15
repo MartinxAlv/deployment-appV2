@@ -6,6 +6,7 @@ import { useEffect, useState, useCallback } from "react";
 import AddUserForm from "./components/AddUserForm";
 import EditUserForm from "./components/EditUserForm";
 import AdminPasswordReset from "@/components/AdminPasswordReset";
+import UserHistoryView from "./components/UserHistoryView";
 import { User } from "../types/users";
 import { useTheme } from "@/components/ThemeProvider";
 
@@ -16,6 +17,7 @@ export default function AdminDashboard() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [resetPasswordUser, setResetPasswordUser] = useState<User | null>(null);
+  const [activeTab, setActiveTab] = useState<'users' | 'history'>('users');
   const { themeObject, theme } = useTheme();
 
   // Use useCallback to define fetchUserRole
@@ -82,65 +84,95 @@ export default function AdminDashboard() {
     >
       <h2 className="text-2xl font-bold mb-6">User Management</h2>
       
-      {/* Action Bar - Contains the Add User button */}
-      <div 
-        className="p-4 rounded-md mb-4 flex justify-between items-center"
-        style={{ 
-          backgroundColor: theme === 'dark' ? '#1f2937' : '#f3f4f6',
-          color: themeObject.text
-        }}
-      >
-        <p className="text-gray-700" style={{ color: themeObject.text }}>Manage system users</p>
+      {/* Tabs */}
+      <div className="flex border-b mb-6" style={{ borderColor: themeObject.border }}>
         <button
-          onClick={toggleAddForm}
-          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition flex items-center"
+          className={`py-2 px-4 font-medium ${
+            activeTab === 'users' 
+              ? 'border-b-2 border-blue-500 text-blue-500' 
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
+          onClick={() => setActiveTab('users')}
         >
-          <span className="mr-1">+</span>
-          {showAddForm ? "Hide Form" : "Add User"}
+          Manage Users
+        </button>
+        <button
+          className={`py-2 px-4 font-medium ${
+            activeTab === 'history' 
+              ? 'border-b-2 border-blue-500 text-blue-500' 
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
+          onClick={() => setActiveTab('history')}
+        >
+          Version History
         </button>
       </div>
       
-      {/* Add User Form - Shown/hidden based on state */}
-      {showAddForm && <AddUserForm />}
+      {activeTab === 'users' && (
+        <>
+          {/* Action Bar - Contains the Add User button */}
+          <div 
+            className="p-4 rounded-md mb-4 flex justify-between items-center"
+            style={{ 
+              backgroundColor: theme === 'dark' ? '#1f2937' : '#f3f4f6',
+              color: themeObject.text
+            }}
+          >
+            <p className="text-gray-700" style={{ color: themeObject.text }}>Manage system users</p>
+            <button
+              onClick={toggleAddForm}
+              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition flex items-center"
+            >
+              <span className="mr-1">+</span>
+              {showAddForm ? "Hide Form" : "Add User"}
+            </button>
+          </div>
+          
+          {/* Add User Form - Shown/hidden based on state */}
+          {showAddForm && <AddUserForm />}
+          
+          {/* Edit User Modal */}
+          {editingUser && <EditUserForm user={editingUser} onClose={closeEditForm} />}
+          
+          {/* Password Reset Modal */}
+          {resetPasswordUser && <AdminPasswordReset user={resetPasswordUser} onClose={closePasswordReset} />}
+          
+          {/* User Table */}
+          <table 
+            className="w-full mt-4 border-collapse" 
+            style={{ 
+              borderColor: themeObject.border 
+            }}
+          >
+            <thead>
+              <tr style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#f3f4f6' }}>
+                <th className="px-4 py-2" style={{ borderColor: themeObject.border, color: themeObject.text }}>Email</th>
+                <th className="px-4 py-2" style={{ borderColor: themeObject.border, color: themeObject.text }}>Name</th>
+                <th className="px-4 py-2" style={{ borderColor: themeObject.border, color: themeObject.text }}>Role</th>
+                <th className="px-4 py-2" style={{ borderColor: themeObject.border, color: themeObject.text }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((user) => (
+                <tr key={user.user_id}>
+                  <td className="px-4 py-2" style={{ borderColor: themeObject.border, color: themeObject.text }}>{user.email}</td>
+                  <td className="px-4 py-2" style={{ borderColor: themeObject.border, color: themeObject.text }}>{user.name}</td>
+                  <td className="px-4 py-2" style={{ borderColor: themeObject.border, color: themeObject.text }}>{user.role}</td>
+                  <td className="px-4 py-2" style={{ borderColor: themeObject.border, color: themeObject.text }}>
+                    <div className="flex space-x-2">
+                      <EditButton user={user} onEdit={handleEdit} />
+                      <ResetPasswordButton user={user} onResetPassword={handleResetPassword} />
+                      <DeleteUserButton userId={user.user_id} />
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
       
-      {/* Edit User Modal */}
-      {editingUser && <EditUserForm user={editingUser} onClose={closeEditForm} />}
-      
-      {/* Password Reset Modal */}
-      {resetPasswordUser && <AdminPasswordReset user={resetPasswordUser} onClose={closePasswordReset} />}
-      
-      {/* User Table */}
-      <table 
-        className="w-full mt-4 border-collapse" 
-        style={{ 
-          borderColor: themeObject.border 
-        }}
-      >
-        <thead>
-          <tr style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#f3f4f6' }}>
-            <th className="px-4 py-2" style={{ borderColor: themeObject.border, color: themeObject.text }}>Email</th>
-            <th className="px-4 py-2" style={{ borderColor: themeObject.border, color: themeObject.text }}>Name</th>
-            <th className="px-4 py-2" style={{ borderColor: themeObject.border, color: themeObject.text }}>Role</th>
-            <th className="px-4 py-2" style={{ borderColor: themeObject.border, color: themeObject.text }}>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map((user) => (
-            <tr key={user.user_id}>
-              <td className="px-4 py-2" style={{ borderColor: themeObject.border, color: themeObject.text }}>{user.email}</td>
-              <td className="px-4 py-2" style={{ borderColor: themeObject.border, color: themeObject.text }}>{user.name}</td>
-              <td className="px-4 py-2" style={{ borderColor: themeObject.border, color: themeObject.text }}>{user.role}</td>
-              <td className="px-4 py-2" style={{ borderColor: themeObject.border, color: themeObject.text }}>
-                <div className="flex space-x-2">
-                  <EditButton user={user} onEdit={handleEdit} />
-                  <ResetPasswordButton user={user} onResetPassword={handleResetPassword} />
-                  <DeleteUserButton userId={user.user_id} />
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {activeTab === 'history' && <UserHistoryView />}
     </div>
   );
 }

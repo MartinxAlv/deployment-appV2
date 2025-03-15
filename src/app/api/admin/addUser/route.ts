@@ -1,9 +1,28 @@
 // src/app/api/admin/addUser/route.ts
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseClient';
+import { getServerSession } from 'next-auth';
 
 export async function POST(request: Request) {
   try {
+    // Check authentication
+    const session = await getServerSession();
+    
+    if (!session?.user) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+    
+    // Get admin status from the user table
+    const { data: adminCheck, error: adminCheckError } = await supabaseAdmin
+      .from('users')
+      .select('role')
+      .eq('email', session.user.email)
+      .single();
+    
+    if (adminCheckError || !adminCheck || adminCheck.role !== 'admin') {
+      return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+    }
+    
     // Parse the request body as JSON
     const body = await request.json();
     const { email, password, name, userRole } = body;
@@ -51,6 +70,31 @@ export async function POST(request: Request) {
     if (dbError) {
       console.error('Database insertion error:', dbError.message);
       return NextResponse.json({ error: dbError.message }, { status: 400 });
+    }
+
+    // Log the user creation action
+    const userData = {
+      user_id: authData.user.id,
+      email: email,
+      name: name,
+      role: role
+    };
+    
+    try {
+      await supabaseAdmin
+        .from('user_action_history')
+        .insert({
+          action_type: 'create',
+          performed_by: session.user.id,
+          performed_by_email: session.user.email,
+          target_user_id: authData.user.id,
+          target_user_email: email,
+          previous_data: null,
+          new_data: userData
+        });
+    } catch (logError) {
+      console.error('Error logging user creation:', logError);
+      // Continue even if logging fails
     }
 
     return NextResponse.json({ 
