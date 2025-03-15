@@ -74,26 +74,13 @@ export default function AdminDashboard() {
 
   return (
     <div 
-      className={`admin-panel p-6 pt-16 min-h-screen ${theme === 'dark' ? 'dark' : ''}`}
+      className={`admin-panel p-6 ${theme === 'dark' ? 'dark' : ''}`}
       style={{ 
         backgroundColor: themeObject.background, 
         color: themeObject.text 
       }}
     >
-      {/* Back to Dashboard Button - Fixed position to avoid conflicts */}
-      <button
-        onClick={() => router.push('/dashboard')}
-        className="fixed top-4 left-4 px-4 py-2 rounded-md font-medium transition z-10"
-        style={{
-          backgroundColor: "#4ade80", // Green background
-          color: "#ffffff", // White text
-          border: "1px solid #16a34a", // Darker green border
-        }}
-      >
-        Back to Dashboard
-      </button>
-      
-      <h1 className="text-2xl font-bold mb-6 mt-8 text-center">Admin Dashboard</h1>
+      <h2 className="text-2xl font-bold mb-6">User Management</h2>
       
       {/* Action Bar - Contains the Add User button */}
       <div 

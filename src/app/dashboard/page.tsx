@@ -24,49 +24,16 @@ export default function Dashboard() {
 
   return (
     <div
-      className="min-h-screen py-8 px-4 md:px-8"
+      className="px-4 md:px-8"
       style={{ backgroundColor: themeObject.background, color: themeObject.text }}
     >
       {/* Header Section */}
       <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 mt-10">
-          <div>
-            <h1 className="text-3xl font-bold">Welcome, {session?.user?.name || session?.user?.email}</h1>
-            <p className="mt-1 text-gray-500" style={{ color: themeObject.text === '#ffffff' ? '#9CA3AF' : '#6B7280' }}>
-              Here&apos;s an overview of deployment activities
-            </p>
-          </div>
-          
-          {/* Quick Actions */}
-          <div className="mt-4 md:mt-0 flex flex-wrap gap-2">
-            <button
-              onClick={() => router.push('/deployments')}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-            >
-              View All Deployments
-            </button>
-            
-            <button
-              onClick={() => router.push('/technician-deployments')}
-              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
-            >
-              Technician View
-            </button>
-            <button
-              onClick={() => router.push('/ready-to-deploy')}
-              className="px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 transition-colors"
-            >
-              Ready to Deploy
-            </button>
-            {session?.user?.role === "admin" && (
-              <button
-                onClick={() => router.push('/admin')}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
-              >
-                Admin Panel
-              </button>
-            )}
-          </div>
+        <div className="flex flex-col mb-6">
+          <h2 className="text-2xl font-bold">Welcome, {session?.user?.name || session?.user?.email}</h2>
+          <p className="mt-1 text-gray-500" style={{ color: themeObject.text === '#ffffff' ? '#9CA3AF' : '#6B7280' }}>
+            Here&apos;s an overview of deployment activities
+          </p>
         </div>
         
         {/* Dashboard Statistics */}
