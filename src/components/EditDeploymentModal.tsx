@@ -104,12 +104,14 @@ export default function EditDeploymentModal({
 
   // Status options for the dropdown
   const statusOptions = [
-    "Pending",
-    "Assigned",
-    "In Progress",
-    "Completed",
-    "Cancelled",
-    "On Hold"
+    "Received",
+    "Imaging",
+    "Configuring",
+    "Ready to Deploy",
+    "Deployed",
+    "CANCELED",
+    "UNK",
+    "Ordered"
   ];
 
   return (

@@ -88,7 +88,7 @@ export default function TechnicianEditModal({
     "Configuring",
     "Ready to Deploy",
     "Deployed",
-    "Cancelled",
+    "CANCELED",
     "UNK",
     "Ordered"
   ];
