@@ -90,7 +90,7 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
     const query = searchQuery.toLowerCase();
     return deployments.filter(deployment => {
       // Search through all string fields
-      return Object.entries(deployment).some(([_, value]) => {
+      return Object.entries(deployment).some(([, value]) => {
         return typeof value === 'string' && value.toLowerCase().includes(query);
       });
     });

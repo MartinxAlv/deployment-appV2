@@ -7,7 +7,11 @@ interface DeploymentFiltersProps {
   onTechnicianChange: (technician: string) => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
-  themeObject: any;
+  themeObject: {
+    text: string;
+    cardBackground: string;
+    border: string;
+  };
 }
 
 const DeploymentFilters: React.FC<DeploymentFiltersProps> = ({

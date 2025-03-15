@@ -52,7 +52,12 @@ export default function Dashboard() {
             >
               Technician View
             </button>
-            
+            <button
+    onClick={() => router.push('/ready-to-deploy')}
+    className="px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 transition-colors"
+  >
+    Ready to Deploy
+  </button>
             {session?.user?.role === "admin" && (
               <button
                 onClick={() => router.push('/admin')}
