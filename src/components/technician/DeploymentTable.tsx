@@ -1,22 +1,40 @@
 import React from 'react';
 import { DeploymentData } from '@/lib/googleSheetsService';
-import { useTheme } from "@/components/ThemeProvider";
+import { StatusBadge, PriorityBadge } from './StatusBadges';
 
-interface DeploymentDetailsModalProps {
-  deployment: DeploymentData;
-  onClose: () => void;
+interface DeploymentTableProps {
+  deployments: DeploymentData[];
+  selectedTechnician: string;
+  sortField: string;
+  sortDirection: 'asc' | 'desc';
+  onSortFieldChange: (field: string) => void;
+  onSortDirectionChange: (direction: 'asc' | 'desc') => void;
+  onViewDetails: (deployment: DeploymentData) => void;
+  themeObject: {
+    background: string;
+    text: string;
+    cardBackground: string;
+    inputBackground: string;
+    border: string;
+    button: string;
+    buttonDisabled: string;
+    buttonText: string;
+  };
 }
 
-const DeploymentDetailsModal: React.FC<DeploymentDetailsModalProps> = ({
-  deployment,
-  onClose
+const DeploymentTable: React.FC<DeploymentTableProps> = ({
+  deployments,
+  selectedTechnician,
+  sortField,
+  sortDirection,
+  onSortFieldChange,
+  onSortDirectionChange,
+  onViewDetails,
+  themeObject
 }) => {
-  // Use the theme from context
-  const { themeObject, theme } = useTheme();
-  
-  // Format date values safely
+  // Function to format a date string
   const formatDate = (dateStr: string | undefined) => {
-    if (!dateStr) return 'Not specified';
+    if (!dateStr) return '-';
     
     try {
       const date = new Date(dateStr);
@@ -28,190 +46,125 @@ const DeploymentDetailsModal: React.FC<DeploymentDetailsModalProps> = ({
     }
   };
 
-  // Get status color for badge
-  const getStatusColorClass = (status: string | undefined) => {
-    if (!status) return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
-    
-    const s = status.toLowerCase();
-    if (s.includes('complete') || s === 'deployed') return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-    if (s.includes('progress') || s === 'ready to deploy') return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-    if (s === 'pending') return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
-    if (s === 'cancelled') return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
-    if (s === 'on hold') return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
-    
-    return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+  // Handle sort click
+  const handleSortClick = (field: string) => {
+    if (field === sortField) {
+      // Toggle direction if same field
+      onSortDirectionChange(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // New field, set default ascending
+      onSortFieldChange(field);
+      onSortDirectionChange('asc');
+    }
   };
 
-  // Determine if we're in dark mode
-  const isDark = theme === 'dark';
-
-  // Group fields into sections
-  const sections = [
-    {
-      title: 'Deployment Information',
-      fields: [
-        { key: 'Deployment ID', label: 'Deployment ID' },
-        { key: 'Status', label: 'Status' },
-        { key: 'Deployment Date', label: 'Date', format: formatDate },
-        { key: 'Priority', label: 'Priority' },
-      ]
-    },
-    {
-      title: 'Location & Assignment',
-      fields: [
-        { key: 'Location', label: 'Location' },
-        { key: 'Department', label: 'Department' },
-        { key: 'Division', label: 'Division' },
-        { key: 'Department - Division', label: 'Department - Division' },
-        { key: 'Assigned To', label: 'Assigned To' },
-        { key: 'Technician', label: 'Technician' },
-      ]
-    },
-    {
-      title: 'Device Information',
-      fields: [
-        { key: 'Deployment Type', label: 'Deployment Type' },
-        { key: 'New Device Type', label: 'Device Type' },
-        { key: 'New Model', label: 'Model' },
-        { key: 'New SN', label: 'Serial Number' },
-        { key: 'Current Model', label: 'Current Model' },
-        { key: 'Current SN', label: 'Current Serial Number' },
-      ]
-    },
-    {
-      title: 'Additional Information',
-      fields: [
-        { key: 'SR#', label: 'SR#' },
-        { key: 'SR Link', label: 'SR Link', isLink: true },
-        { key: 'Deployment SR#', label: 'Deployment SR#' },
-        { key: 'Deployment SR Link', label: 'Deployment SR Link', isLink: true },
-      ]
-    },
-    {
-      title: 'Notes',
-      fields: [
-        { key: 'Deployment Notes', label: 'Deployment Notes', isMultiline: true },
-        { key: 'Technician Notes', label: 'Technician Notes', isMultiline: true },
-      ]
+  // Sort icon based on current sort state
+  const getSortIcon = (field: string) => {
+    if (field !== sortField) {
+      // Not sorted by this field
+      return <span className="text-gray-400">↕</span>;
     }
+    
+    return sortDirection === 'asc' 
+      ? <span className="text-blue-500">↑</span> 
+      : <span className="text-blue-500">↓</span>;
+  };
+
+  const isDark = themeObject.background === '#121212';
+
+  // Column definitions
+  const columns = [
+    { field: "Status", label: "Status", render: (d: DeploymentData) => <StatusBadge status={d.Status} /> },
+    { field: "Deployment ID", label: "ID", render: (d: DeploymentData) => d["Deployment ID"] || '-' },
+    { field: "Deployment Date", label: "Date", render: (d: DeploymentData) => formatDate(d["Deployment Date"]) },
+    { field: "Location", label: "Location", render: (d: DeploymentData) => d.Location || '-' },
+    { field: "Assigned To", label: "User", render: (d: DeploymentData) => d["Assigned To"] || '-' },
+    { field: "New Device Type", label: "Device Type", render: (d: DeploymentData) => d["New Device Type"] || d["Deployment Type"] || '-' },
+    { field: "New Model", label: "Model", render: (d: DeploymentData) => d["New Model"] || '-' },
+    { field: "Priority", label: "Priority", render: (d: DeploymentData) => <PriorityBadge priority={d.Priority} /> }
   ];
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50 p-4">
-      <div 
-        className="rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto"
-        style={{ 
-          backgroundColor: themeObject.cardBackground,
-          color: themeObject.text
-        }}
-      >
-        {/* Header */}
-        <div className="px-6 py-4 border-b flex justify-between items-center" style={{ borderColor: themeObject.border }}>
-          <div>
-            <h2 className="text-xl font-bold">Deployment Details</h2>
-            {deployment.Status && (
-              <div className="mt-1">
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColorClass(deployment.Status)}`}>
-                  {deployment.Status}
-                </span>
-              </div>
-            )}
-          </div>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        
-        {/* Content */}
-        <div className="px-6 py-4">
-          {sections.map((section, sectionIndex) => {
-            // Skip sections with no data
-            const hasData = section.fields.some(field => {
-              const value = deployment[field.key as keyof DeploymentData];
-              return value !== undefined && value !== '';
-            });
-            
-            if (!hasData) return null;
+    <div 
+      className="w-full overflow-x-auto rounded-lg shadow-sm border"
+      style={{ 
+        backgroundColor: themeObject.cardBackground,
+        borderColor: themeObject.border
+      }}
+    >
+      <table className="min-w-full">
+        <thead>
+          <tr className={isDark ? "bg-gray-800" : "bg-gray-50"}>
+            {columns.map((column) => (
+              <th 
+                key={column.field}
+                className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer"
+                style={{ color: isDark ? '#94A3B8' : '#64748B' }}
+                onClick={() => handleSortClick(column.field)}
+              >
+                <div className="flex items-center">
+                  <span>{column.label}</span>
+                  <span className="ml-1">{getSortIcon(column.field)}</span>
+                </div>
+              </th>
+            ))}
+            <th 
+              className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-center"
+              style={{ color: isDark ? '#94A3B8' : '#64748B' }}
+            >
+              Actions
+            </th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+          {deployments.map((deployment) => {
+            // Get a unique key for the row
+            const rowKey = deployment.id || deployment["Deployment ID"] || Math.random().toString();
             
             return (
-              <div 
-                key={`section-${sectionIndex}`}
-                className={`mb-6 ${sectionIndex > 0 ? 'pt-6 border-t' : ''}`}
-                style={{ borderColor: themeObject.border }}
+              <tr 
+                key={rowKey} 
+                className={isDark 
+                  ? "hover:bg-gray-700 transition-colors" 
+                  : "hover:bg-gray-50 transition-colors"
+                }
               >
-                <h3 className="text-lg font-medium mb-3">{section.title}</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {section.fields.map((field, fieldIndex) => {
-                    const value = deployment[field.key as keyof DeploymentData];
-                    
-                    // Skip fields with no value
-                    if (value === undefined || value === '') return null;
-                    
-                    // Format value if needed
-                    let displayValue = field.format ? field.format(value as string) : value;
-                    
-                    // For multiline fields, use the full width
-                    const isFullWidth = field.isMultiline;
-                    
-                    return (
-                      <div 
-                        key={`field-${fieldIndex}`}
-                        className={isFullWidth ? 'col-span-1 md:col-span-2' : ''}
-                      >
-                        <div className="text-sm font-medium mb-1" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
-                          {field.label}
-                        </div>
-                        
-                        {field.isMultiline ? (
-                          <div 
-                            className="p-3 rounded-md border whitespace-pre-wrap"
-                            style={{ 
-                              backgroundColor: isDark ? 'rgba(15, 23, 42, 0.5)' : 'rgba(248, 250, 252, 0.8)',
-                              borderColor: themeObject.border,
-                              minHeight: '60px'
-                            }}
-                          >
-                            {displayValue as string || 'No notes provided'}
-                          </div>
-                        ) : field.isLink && displayValue ? (
-                          <a 
-                            href={displayValue as string} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline"
-                          >
-                            {displayValue as string}
-                          </a>
-                        ) : (
-                          <div>{displayValue as string}</div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+                {columns.map((column) => (
+                  <td 
+                    key={`${rowKey}-${column.field}`}
+                    className="px-4 py-3 whitespace-nowrap"
+                    style={{ color: themeObject.text }}
+                  >
+                    {column.render(deployment)}
+                  </td>
+                ))}
+                <td className="px-4 py-3 whitespace-nowrap text-center">
+                  <button
+                    onClick={() => onViewDetails(deployment)}
+                    className="inline-flex items-center px-3 py-1 rounded-md text-sm font-medium transition"
+                    style={{ 
+                      backgroundColor: themeObject.button,
+                      color: themeObject.buttonText
+                    }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                    View
+                  </button>
+                </td>
+              </tr>
             );
           })}
-        </div>
-        
-        {/* Footer */}
-        <div className="px-6 py-4 border-t flex justify-end" style={{ borderColor: themeObject.border }}>
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-white rounded-md hover:bg-blue-700 transition"
-            style={{ backgroundColor: themeObject.button, color: themeObject.buttonText }}
-          >
-            Close
-          </button>
-        </div>
+        </tbody>
+      </table>
+      
+      <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800 text-sm text-gray-500 dark:text-gray-400 border-t">
+        Showing {deployments.length} deployments for {selectedTechnician}
       </div>
     </div>
   );
 };
 
-export default DeploymentDetailsModal;
+export default DeploymentTable;

@@ -7,6 +7,19 @@ interface DeploymentDetailsModalProps {
   onClose: () => void;
 }
 
+interface FieldDefinition {
+  key: string;
+  label: string;
+  format?: (value: string) => string;
+  isMultiline?: boolean;
+  isLink?: boolean;
+}
+
+interface SectionDefinition {
+  title: string;
+  fields: FieldDefinition[];
+}
+
 const DeploymentDetailsModal: React.FC<DeploymentDetailsModalProps> = ({
   deployment,
   onClose
@@ -46,7 +59,7 @@ const DeploymentDetailsModal: React.FC<DeploymentDetailsModalProps> = ({
   const isDark = theme === 'dark';
 
   // Group fields into sections
-  const sections = [
+  const sections: SectionDefinition[] = [
     {
       title: 'Deployment Information',
       fields: [
@@ -153,7 +166,7 @@ const DeploymentDetailsModal: React.FC<DeploymentDetailsModalProps> = ({
                     if (value === undefined || value === '') return null;
                     
                     // Format value if needed
-                    let displayValue = field.format ? field.format(value as string) : value;
+                    const displayValue = field.format ? field.format(value as string) : value;
                     
                     // For multiline fields, use the full width
                     const isFullWidth = field.isMultiline;
