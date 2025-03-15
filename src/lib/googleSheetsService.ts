@@ -308,7 +308,83 @@ return deployments;
       return null;
     }
   }
-
+/**
+ * Update only specific fields of a deployment
+ * This is more efficient than updating the entire row
+ */
+async updateDeploymentFields(deployment: DeploymentData, fields: string[]): Promise<void> {
+  try {
+    const deploymentId = deployment.id || deployment["Deployment ID"];
+    if (!deploymentId) {
+      throw new Error('Either id or Deployment ID is required for updates');
+    }
+    
+    console.log(`Updating ${fields.length} fields for deployment with ID: ${deploymentId}`);
+    console.log('Fields to update:', fields);
+    
+    // Find the row with this Deployment ID
+    const rowIndex = await this.findRowByDeploymentId(deploymentId);
+    
+    if (!rowIndex) {
+      // Instead of adding a new row, throw an error
+      const errorMessage = `Deployment with ID "${deploymentId}" not found in the spreadsheet`;
+      console.error(errorMessage);
+      throw new Error(errorMessage);
+    }
+    
+    // Get column mapping
+    const { columnMapping } = await this.getHeadersAndColumnMapping();
+    
+    // Prepare batch update request
+    const sheets = await getSheetsInstance();
+    const requests = [];
+    
+    // Only update the specified fields
+    let updatedCount = 0;
+    
+    for (const fieldName of fields) {
+      // Skip id fields
+      if (fieldName === 'id' || fieldName === 'Deployment ID') continue;
+      
+      const fieldValue = deployment[fieldName];
+      const columnIndex = columnMapping.get(fieldName);
+      
+      if (columnIndex !== undefined) {
+        const columnLetter = this.columnToLetter(columnIndex);
+        const cellAddress = `${this.sheetName}!${columnLetter}${rowIndex}`;
+        
+        console.log(`Updating ${fieldName} at ${cellAddress} to "${fieldValue}"`);
+        
+        requests.push(
+          sheets.spreadsheets.values.update({
+            spreadsheetId: this.spreadsheetId,
+            range: cellAddress,
+            valueInputOption: 'USER_ENTERED',
+            requestBody: {
+              values: [[fieldValue]]
+            }
+          })
+        );
+        
+        updatedCount++;
+      } else {
+        console.warn(`Column not found for field: ${fieldName}`);
+      }
+    }
+    
+    // Execute all updates
+    if (requests.length > 0) {
+      await Promise.all(requests);
+      console.log(`Successfully updated ${updatedCount} fields in row ${rowIndex}`);
+    } else {
+      console.log('No fields to update');
+    }
+    
+  } catch (error) {
+    console.error('Error updating deployment fields:', error);
+    throw new Error(`Failed to update deployment fields: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
   /**
    * Update a deployment using direct API calls to individual cells
    * This approach avoids clearing any cells

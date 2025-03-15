@@ -100,39 +100,47 @@ export default function TechnicianDeploymentsPage() {
   };
 
   // Save edited deployment
-  const handleSaveDeployment = async (deploymentToSave: DeploymentData) => {
-    try {
-      setIsRefreshing(true);
-      
-      console.log("Saving deployment data:", deploymentToSave);
-      
-      const response = await fetch("/api/deployments", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(deploymentToSave),
-      });
+  // src/app/technician-deployments/page.tsx - Updated save function
+  
+// Save edited deployment with optimization for changed fields only
+const handleSaveDeployment = async (deploymentToSave: DeploymentData, changedFields: string[]) => {
+  try {
+    setIsRefreshing(true);
+    
+    console.log("Saving deployment data:", deploymentToSave);
+    console.log("Changed fields:", changedFields);
+    
+    const response = await fetch("/api/deployments", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      // Send both the deployment data and the list of changed fields
+      body: JSON.stringify({
+        deploymentData: deploymentToSave,
+        changedFields: changedFields
+      }),
+    });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Error ${response.status}: ${errorText}`);
-      }
-
-      // Reset editing state
-      setEditingDeployment(null);
-      setError(null);
-      
-      // Refresh data to ensure we have the latest changes
-      await refreshData();
-    } catch (err) {
-      setError("Failed to save changes: " + (err instanceof Error ? err.message : String(err)));
-      console.error("Error updating deployment:", err);
-      throw err; // Re-throw to be caught by the modal
-    } finally {
-      setIsRefreshing(false);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Error ${response.status}: ${errorText}`);
     }
-  };
+
+    // Reset editing state
+    setEditingDeployment(null);
+    setError(null);
+    
+    // Refresh data to ensure we have the latest changes
+    await refreshData();
+  } catch (err) {
+    setError("Failed to save changes: " + (err instanceof Error ? err.message : String(err)));
+    console.error("Error updating deployment:", err);
+    throw err; // Re-throw to be caught by the modal
+  } finally {
+    setIsRefreshing(false);
+  }
+};
 
   // Refresh the deployments data
   const refreshData = async () => {

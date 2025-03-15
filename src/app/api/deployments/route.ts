@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { deploymentSheetService, DeploymentData } from '@/lib/googleSheetsService';
 import { getServerSession } from 'next-auth';
 
-// GET handler to fetch all deployments
+// GET handler to fetch all deployments (unchanged)
 export async function GET() {
   try {
     // Check authentication (optional but recommended)
@@ -38,7 +38,7 @@ export async function GET() {
   }
 }
 
-// POST handler to add a new deployment
+// POST handler to add a new deployment (unchanged)
 export async function POST(request: Request) {
   try {
     // Check authentication
@@ -87,7 +87,7 @@ export async function POST(request: Request) {
   }
 }
 
-// PUT handler to update an existing deployment
+// MODIFIED: PUT handler to support partial updates with changedFields parameter
 export async function PUT(request: Request) {
   try {
     // Check authentication
@@ -98,7 +98,7 @@ export async function PUT(request: Request) {
     }
     
     // Parse the request body
-    const deploymentData: DeploymentData = await request.json();
+    const { deploymentData, changedFields } = await request.json();
     
     // Check for both standard id and Deployment ID
     if (!deploymentData.id && !deploymentData["Deployment ID"]) {
@@ -113,27 +113,55 @@ export async function PUT(request: Request) {
       deploymentData.id = deploymentData["Deployment ID"];
     }
     
-    console.log(`Updating deployment with data:`, deploymentData);
+    console.log(`Updating deployment ${deploymentData.id} with ${changedFields?.length || 'all'} fields`);
     
-    try {
-      // Update the deployment
-      await deploymentSheetService.updateDeployment(deploymentData);
+    if (changedFields && Array.isArray(changedFields)) {
+      console.log('Changed fields:', changedFields);
       
-      return NextResponse.json({ 
-        message: 'Deployment updated successfully',
-        deploymentId: deploymentData.id || deploymentData["Deployment ID"]
-      });
-    } catch (updateError) {
-      // If the deployment wasn't found, return a more specific error
-      if (updateError instanceof Error && 
-          updateError.message.includes("not found in the spreadsheet")) {
+      // If we have specific fields to update, use the updateDeploymentFields function
+      try {
+        await deploymentSheetService.updateDeploymentFields(deploymentData, changedFields);
+        
         return NextResponse.json({ 
-          error: `Deployment with ID "${deploymentData.id}" not found in the spreadsheet. Please verify the ID is correct.`
-        }, { status: 404 });
+          message: `Deployment updated successfully (${changedFields.length} fields)`,
+          deploymentId: deploymentData.id || deploymentData["Deployment ID"],
+          updatedFields: changedFields
+        });
+      } catch (updateError) {
+        // If the deployment wasn't found, return a more specific error
+        if (updateError instanceof Error && 
+            updateError.message.includes("not found in the spreadsheet")) {
+          return NextResponse.json({ 
+            error: `Deployment with ID "${deploymentData.id}" not found in the spreadsheet. Please verify the ID is correct.`
+          }, { status: 404 });
+        }
+        
+        // For other errors, throw to catch block
+        throw updateError;
       }
+    } else {
+      // Fall back to full update if no changedFields provided
+      console.log('Performing full deployment update');
       
-      // For other errors, throw to catch block
-      throw updateError;
+      try {
+        await deploymentSheetService.updateDeployment(deploymentData);
+        
+        return NextResponse.json({ 
+          message: 'Deployment updated successfully (full update)',
+          deploymentId: deploymentData.id || deploymentData["Deployment ID"]
+        });
+      } catch (updateError) {
+        // If the deployment wasn't found, return a more specific error
+        if (updateError instanceof Error && 
+            updateError.message.includes("not found in the spreadsheet")) {
+          return NextResponse.json({ 
+            error: `Deployment with ID "${deploymentData.id}" not found in the spreadsheet. Please verify the ID is correct.`
+          }, { status: 404 });
+        }
+        
+        // For other errors, throw to catch block
+        throw updateError;
+      }
     }
     
   } catch (error) {

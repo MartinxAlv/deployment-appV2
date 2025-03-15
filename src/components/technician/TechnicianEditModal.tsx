@@ -1,12 +1,12 @@
 // src/components/technician/TechnicianEditModal.tsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTheme } from "@/components/ThemeProvider";
 import { DeploymentData } from "@/lib/googleSheetsService";
 
 interface TechnicianEditModalProps {
   deployment: DeploymentData;
   onClose: () => void;
-  onSave: (deployment: DeploymentData) => Promise<void>;
+  onSave: (deployment: DeploymentData, changedFields: string[]) => Promise<void>;
 }
 
 export default function TechnicianEditModal({ 
@@ -15,9 +15,18 @@ export default function TechnicianEditModal({
   onSave
 }: TechnicianEditModalProps) {
   const [formData, setFormData] = useState<DeploymentData>({ ...deployment });
+  const [originalData, setOriginalData] = useState<DeploymentData>({ ...deployment });
+  const [changedFields, setChangedFields] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const { themeObject } = useTheme();
+
+  // Reset original data when deployment prop changes
+  useEffect(() => {
+    setOriginalData({ ...deployment });
+    setFormData({ ...deployment });
+    setChangedFields([]);
+  }, [deployment]);
 
   // Define editable fields for technicians
   const editableFields = [
@@ -32,36 +41,59 @@ export default function TechnicianEditModal({
     "New Monitor 1 SN",
     "New Monitor 2 SN",
     "New Other",
-    "Technician Notes" // Adding notes field for technicians to provide updates
+    "Technician Notes"
   ];
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
+    
+    // Update form data
     setFormData(prev => ({
       ...prev,
       [name]: value
     }));
+    
+    // Track changed fields by comparing with original values
+    const originalValue = originalData[name];
+    
+    // If value is different from original, add to changed fields
+    // If it's now the same as original, remove from changed fields
+    if (value !== originalValue) {
+      if (!changedFields.includes(name)) {
+        setChangedFields(prev => [...prev, name]);
+      }
+    } else {
+      setChangedFields(prev => prev.filter(field => field !== name));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
+    // Don't submit if nothing has changed
+    if (changedFields.length === 0) {
+      onClose();
+      return;
+    }
+
     try {
       setIsLoading(true);
       
-      // Make sure the Deployment ID is preserved
-      const deploymentToSave = { ...formData };
-      if (!deploymentToSave["Deployment ID"] && deploymentToSave.id) {
-        deploymentToSave["Deployment ID"] = deploymentToSave.id;
-      }
+      // Create a minimal object with only the ID and changed fields
+      const deploymentToSave: DeploymentData = {
+        // Always include the ID for identifying the record
+        id: formData.id || formData["Deployment ID"],
+        "Deployment ID": formData["Deployment ID"] || formData.id
+      };
       
-      // If id is missing but Deployment ID exists, set id
-      if (!deploymentToSave.id && deploymentToSave["Deployment ID"]) {
-        deploymentToSave.id = deploymentToSave["Deployment ID"];
-      }
+      // Add only the changed fields
+      changedFields.forEach(field => {
+        deploymentToSave[field] = formData[field];
+      });
       
-      await onSave(deploymentToSave);
+      // Pass both the minimal deployment object and list of changed fields
+      await onSave(deploymentToSave, changedFields);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save changes");
@@ -105,7 +137,11 @@ export default function TechnicianEditModal({
       >
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold">
-            Edit Deployment
+            Edit Deployment {changedFields.length > 0 && 
+              <span className="text-sm font-normal text-blue-500 ml-2">
+                ({changedFields.length} field{changedFields.length !== 1 ? 's' : ''} changed)
+              </span>
+            }
           </h2>
           <button
             onClick={onClose}
@@ -165,14 +201,18 @@ export default function TechnicianEditModal({
             {/* Map through all editable fields */}
             {editableFields.map((field) => {
               const inputType = getInputType(field);
+              const isChanged = changedFields.includes(field);
               
-              // Skip if not in formData and not notes field
-              if (!formData[field] && !field.includes('Notes')) return null;
+              // Always include notes field, otherwise skip empty fields
+              if (!formData[field] && !originalData[field] && !field.includes('Notes')) return null;
 
               return (
                 <div key={field} className={inputType === "textarea" ? "col-span-1 md:col-span-2" : ""}>
-                  <label className="block font-medium mb-1" style={{ color: themeObject.text }}>
-                    {field}
+                  <label 
+                    className={`block font-medium mb-1 ${isChanged ? "text-blue-500" : ""}`}
+                    style={{ color: isChanged ? undefined : themeObject.text }}
+                  >
+                    {field} {isChanged && "✱"}
                   </label>
                   
                   {inputType === "select" ? (
@@ -180,11 +220,11 @@ export default function TechnicianEditModal({
                       name={field}
                       value={formData[field] || ""}
                       onChange={handleInputChange}
-                      className="w-full px-3 py-2 border rounded-md"
+                      className={`w-full px-3 py-2 border rounded-md ${isChanged ? "border-blue-500" : ""}`}
                       style={{
                         backgroundColor: themeObject.inputBackground,
                         color: themeObject.text,
-                        borderColor: themeObject.border,
+                        borderColor: isChanged ? undefined : themeObject.border,
                       }}
                     >
                       <option value="">Select Status</option>
@@ -198,11 +238,11 @@ export default function TechnicianEditModal({
                       value={formData[field] || ""}
                       onChange={handleInputChange}
                       rows={4}
-                      className="w-full px-3 py-2 border rounded-md"
+                      className={`w-full px-3 py-2 border rounded-md ${isChanged ? "border-blue-500" : ""}`}
                       style={{
                         backgroundColor: themeObject.inputBackground,
                         color: themeObject.text,
-                        borderColor: themeObject.border,
+                        borderColor: isChanged ? undefined : themeObject.border,
                       }}
                       placeholder={field === "Technician Notes" ? "Add your deployment notes here..." : ""}
                     />
@@ -212,11 +252,11 @@ export default function TechnicianEditModal({
                       name={field}
                       value={formData[field] || ""}
                       onChange={handleInputChange}
-                      className="w-full px-3 py-2 border rounded-md"
+                      className={`w-full px-3 py-2 border rounded-md ${isChanged ? "border-blue-500" : ""}`}
                       style={{
                         backgroundColor: themeObject.inputBackground,
                         color: themeObject.text,
-                        borderColor: themeObject.border,
+                        borderColor: isChanged ? undefined : themeObject.border,
                       }}
                     />
                   )}
@@ -241,10 +281,14 @@ export default function TechnicianEditModal({
 
             <button
               type="submit"
-              disabled={isLoading}
-              className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition"
+              disabled={isLoading || changedFields.length === 0}
+              className={`text-white px-4 py-2 rounded-md transition ${
+                changedFields.length === 0 ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600'
+              }`}
             >
-              {isLoading ? "Saving..." : "Save Changes"}
+              {isLoading ? "Saving..." : 
+               changedFields.length === 0 ? "No Changes" : 
+               `Save ${changedFields.length} Change${changedFields.length !== 1 ? 's' : ''}`}
             </button>
           </div>
         </form>
