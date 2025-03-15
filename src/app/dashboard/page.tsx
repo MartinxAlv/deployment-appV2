@@ -31,7 +31,7 @@ export default function Dashboard() {
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 mt-10">
           <div>
-            <h1 className="text-3xl font-bold">Welcome, {session?.user?.email}</h1>
+            <h1 className="text-3xl font-bold">Welcome, {session?.user?.name || session?.user?.email}</h1>
             <p className="mt-1 text-gray-500" style={{ color: themeObject.text === '#ffffff' ? '#9CA3AF' : '#6B7280' }}>
               Here&apos;s an overview of deployment activities
             </p>
@@ -53,11 +53,11 @@ export default function Dashboard() {
               Technician View
             </button>
             <button
-    onClick={() => router.push('/ready-to-deploy')}
-    className="px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 transition-colors"
-  >
-    Ready to Deploy
-  </button>
+              onClick={() => router.push('/ready-to-deploy')}
+              className="px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 transition-colors"
+            >
+              Ready to Deploy
+            </button>
             {session?.user?.role === "admin" && (
               <button
                 onClick={() => router.push('/admin')}

@@ -30,10 +30,10 @@ const authOptions = {
 
         console.log("Authenticated User ID:", data.user.id);
 
-        // 🔹 Fetch user role from Supabase "users" table
+        // 🔹 Fetch user role and name from Supabase "users" table
         const { data: userData, error: userError } = await supabase
           .from("users")
-          .select("user_id, role") // ✅ Ensure user_id and role are selected
+          .select("user_id, role, name") // Added name to the selected fields
           .eq("user_id", data.user.id)
           .single();
 
@@ -46,11 +46,12 @@ const authOptions = {
           throw new Error("Failed to fetch user role");
         }
 
-        // ✅ Return session with user role included
+        // ✅ Return session with user role and name included
         return {
           id: data.user.id,
           email: data.user.email,
-          role: userData.role, // Include role in session
+          role: userData.role,
+          name: userData.name, // Include name in session
         };
       },
     }),
@@ -100,15 +101,17 @@ const authOptions = {
       if (session.user) {
         session.user.id = token.id as string;
         session.user.role = token.role as string; // Ensure role is stored in session
+        session.user.name = token.name as string; // Add name to session
       }
       
       return session;
     },
-    async jwt({ token, user }: { token: JWT; user?: { id: string; role?: string } }) {
+    async jwt({ token, user }: { token: JWT; user?: { id: string; role?: string; name?: string } }) {
       console.log("JWT Callback - User Data:", user);
       if (user) {
         token.id = user.id;
         token.role = user.role; // Store role in token
+        token.name = user.name; // Store name in token
       }
       return token;
     },
