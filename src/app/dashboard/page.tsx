@@ -15,13 +15,18 @@ export default function Dashboard() {
 
   // Redirect to Login if unauthenticated
   useEffect(() => {
+    // Only redirect if we're sure the user is unauthenticated
     if (status === "unauthenticated") {
       console.log("User not authenticated, redirecting to login");
-      router.replace("/login");
+      // Add a small delay to ensure proper session state
+      setTimeout(() => {
+        router.replace("/login");
+      }, 100);
     }
   }, [status, router]);
 
-  if (status === "loading") {
+  // Show loading state while checking authentication
+  if (status === "loading" || !session) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
@@ -32,8 +37,11 @@ export default function Dashboard() {
     );
   }
 
-  if (status === "unauthenticated") {
-    return null; // Will be redirected by useEffect
+  // Additional check to ensure we have a valid session
+  if (!session?.user) {
+    console.log("No valid session found, redirecting to login");
+    router.replace("/login");
+    return null;
   }
 
   return (

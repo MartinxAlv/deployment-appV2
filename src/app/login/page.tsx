@@ -33,12 +33,15 @@ export default function Login() {
         email,
         password,
         redirect: false,
+        callbackUrl: "/dashboard"
       });
 
       if (result?.error) {
+        console.error("Login error:", result.error);
         alert(result.error);
       } else if (result?.ok) {
         console.log("Login successful, redirecting to dashboard");
+        await new Promise(resolve => setTimeout(resolve, 100));
         router.replace("/dashboard");
       }
     } catch (error) {

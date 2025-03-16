@@ -1,11 +1,11 @@
 // src/app/api/auth/[...nextauth]/route.ts
-import NextAuth, { User } from "next-auth";
+import NextAuth, { User, NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { supabase } from "@/lib/supabaseClient";
 import { JWT } from "next-auth/jwt";
 import { Session } from "next-auth";
 
-const authOptions = {
+const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -16,6 +16,8 @@ const authOptions = {
       async authorize(credentials) {
         const email = credentials?.email || "";
         const password = credentials?.password || "";
+
+        console.log("Attempting login for:", email);
 
         // 🔹 Attempt to sign in user
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -33,39 +35,31 @@ const authOptions = {
         // 🔹 Fetch user role and name from Supabase "users" table
         const { data: userData, error: userError } = await supabase
           .from("users")
-          .select("user_id, role, name") // Added name to the selected fields
+          .select("user_id, role, name")
           .eq("user_id", data.user.id)
           .single();
-
-        // 🔹 Debugging Logs
-        console.log("User Data from DB:", userData);
-        console.log("Error from DB Query:", userError);
 
         if (userError || !userData) {
           console.error("Error fetching user role:", userError?.message || "No user found");
           throw new Error("Failed to fetch user role");
         }
 
-        // ✅ Return session with user role and name included
+        console.log("Successfully fetched user data:", { id: data.user.id, email: data.user.email, role: userData.role });
+
         return {
           id: data.user.id,
           email: data.user.email,
           role: userData.role,
-          name: userData.name, // Include name in session
+          name: userData.name,
         };
       },
     }),
   ],
   secret: process.env.NEXTAUTH_SECRET,
-  pages: {
-    signIn: "/login",
-  },
-  // Add session configuration for persistence
   session: {
     strategy: "jwt" as const,
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
-  // Configure secure cookies
   cookies: {
     sessionToken: {
       name: `next-auth.session-token`,
@@ -73,7 +67,7 @@ const authOptions = {
         httpOnly: true,
         sameSite: "lax" as const,
         path: "/",
-        secure: process.env.NODE_ENV === "production" // Only force secure in production
+        secure: true // Always use secure in production
       },
     },
     callbackUrl: {
@@ -81,7 +75,7 @@ const authOptions = {
       options: {
         sameSite: "lax" as const,
         path: "/",
-        secure: process.env.NODE_ENV === "production"
+        secure: true
       },
     },
     csrfToken: {
@@ -90,24 +84,14 @@ const authOptions = {
         httpOnly: true,
         sameSite: "lax" as const,
         path: "/",
-        secure: process.env.NODE_ENV === "production"
+        secure: true
       },
     },
   },
   callbacks: {
-    async session({ session, token }: { session: Session; token: JWT }) {
-      console.log("Session callback - Token:", token);
-      
-      if (session.user) {
-        session.user.id = token.id as string;
-        session.user.role = token.role as string;
-        session.user.name = token.name as string;
-      }
-      
-      return session;
-    },
     async jwt({ token, user }: { token: JWT; user?: User }) {
-      console.log("JWT callback - User:", user);
+      console.log("JWT Callback - Current token:", token);
+      console.log("JWT Callback - User data:", user);
       
       if (user) {
         token.id = user.id;
@@ -117,6 +101,23 @@ const authOptions = {
       
       return token;
     },
+    async session({ session, token }: { session: Session; token: JWT }) {
+      console.log("Session Callback - Current session:", session);
+      console.log("Session Callback - Current token:", token);
+      
+      if (session.user) {
+        session.user.id = token.id as string;
+        session.user.role = token.role as string;
+        session.user.name = token.name as string;
+      }
+      
+      return session;
+    },
+  },
+  debug: process.env.NODE_ENV === 'development',
+  pages: {
+    signIn: "/login",
+    error: "/login", // Redirect to login page on error
   },
 };
 
