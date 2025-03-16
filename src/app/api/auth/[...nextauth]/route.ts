@@ -66,22 +66,22 @@ const authOptions = {
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   // Configure secure cookies
-cookies: {
-  sessionToken: {
-    name: `next-auth.session-token`,
-    options: {
-      httpOnly: true,
-      sameSite: "lax" as const,
-      path: "/",
-      secure: true // Force secure in production
+  cookies: {
+    sessionToken: {
+      name: `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax" as const,
+        path: "/",
+        secure: process.env.NODE_ENV === "production" // Only force secure in production
+      },
     },
-  },
     callbackUrl: {
       name: `next-auth.callback-url`,
       options: {
         sameSite: "lax" as const,
         path: "/",
-        secure: process.env.NODE_ENV === "production",
+        secure: process.env.NODE_ENV === "production"
       },
     },
     csrfToken: {
@@ -90,34 +90,34 @@ cookies: {
         httpOnly: true,
         sameSite: "lax" as const,
         path: "/",
-        secure: process.env.NODE_ENV === "production",
+        secure: process.env.NODE_ENV === "production"
       },
     },
   },
   callbacks: {
-  async session({ session, token }: { session: Session; token: JWT }) {
-    console.log("Session callback - Token:", token);
-    
-    if (session.user) {
-      session.user.id = token.id as string;
-      session.user.role = token.role as string;
-      session.user.name = token.name as string;
-    }
-    
-    return session;
+    async session({ session, token }: { session: Session; token: JWT }) {
+      console.log("Session callback - Token:", token);
+      
+      if (session.user) {
+        session.user.id = token.id as string;
+        session.user.role = token.role as string;
+        session.user.name = token.name as string;
+      }
+      
+      return session;
+    },
+    async jwt({ token, user }: { token: JWT; user?: User }) {
+      console.log("JWT callback - User:", user);
+      
+      if (user) {
+        token.id = user.id;
+        token.role = user.role;
+        token.name = user.name;
+      }
+      
+      return token;
+    },
   },
-async jwt({ token, user }: { token: JWT; user?: User }) {
-        console.log("JWT callback - User:", user);
-    
-    if (user) {
-      token.id = user.id;
-      token.role = user.role;
-      token.name = user.name;
-    }
-    
-    return token;
-  },
-},
 };
 
 const handler = NextAuth(authOptions);

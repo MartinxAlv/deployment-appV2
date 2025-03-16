@@ -15,11 +15,13 @@ export default function Home() {
     
     // If authenticated, redirect to dashboard
     if (status === "authenticated") {
-      router.push("/dashboard");
+      console.log("User authenticated, redirecting to dashboard");
+      router.replace("/dashboard");
     } 
     // If not authenticated, redirect to login
     else if (status === "unauthenticated") {
-      router.push("/login");
+      console.log("User not authenticated, redirecting to login");
+      router.replace("/login");
     }
   }, [status, router]);
 
@@ -27,7 +29,10 @@ export default function Home() {
   if (status === "loading") {
     return (
       <div className="flex items-center justify-center h-screen">
-        <p className="text-xl">Loading...</p>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-xl">Loading...</p>
+        </div>
       </div>
     );
   }

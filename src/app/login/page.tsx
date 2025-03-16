@@ -20,7 +20,7 @@ export default function Login() {
   useEffect(() => {
     if (status === "authenticated") {
       console.log("User already authenticated, redirecting to dashboard");
-      router.push("/dashboard");
+      router.replace("/dashboard");
     }
   }, [status, router]);
 
@@ -28,17 +28,24 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
 
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
-    setLoading(false);
+    try {
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
 
-    if (result?.error) {
-      alert(result.error);
-    } else {
-      router.push("/dashboard");
+      if (result?.error) {
+        alert(result.error);
+      } else if (result?.ok) {
+        console.log("Login successful, redirecting to dashboard");
+        router.replace("/dashboard");
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      alert("An error occurred during login");
+    } finally {
+      setLoading(false);
     }
   };
 
