@@ -66,16 +66,16 @@ const authOptions = {
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   // Configure secure cookies
-  cookies: {
-    sessionToken: {
-      name: `next-auth.session-token`,
-      options: {
-        httpOnly: true,
-        sameSite: "lax" as const,
-        path: "/",
-        secure: process.env.NODE_ENV === "production",
-      },
+cookies: {
+  sessionToken: {
+    name: `next-auth.session-token`,
+    options: {
+      httpOnly: true,
+      sameSite: "lax" as const,
+      path: "/",
+      secure: true // Force secure in production
     },
+  },
     callbackUrl: {
       name: `next-auth.callback-url`,
       options: {
