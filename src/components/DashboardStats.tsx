@@ -97,30 +97,40 @@ const DashboardStats: React.FC = () => {
   });
 
   // Fetch deployment data
-  useEffect(() => {
-    const fetchDeployments = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch('/api/deployments');
-        
-        if (!response.ok) {
-          throw new Error(`Error ${response.status}: Failed to fetch deployments`);
-        }
-        
-        const data = await response.json();
-        // Don't set deployments state, just process it directly
-        processDeploymentData(data);
-      } catch (err) {
-        console.error("Error fetching deployments:", err);
-        setError(err instanceof Error ? err.message : "Failed to load deployment data");
-      } finally {
-        setLoading(false);
-      }
-    };
-    
+  // In src/components/DashboardStats.tsx - Update the fetchDeployments function in useEffect
 
-    fetchDeployments();
-  }, []);
+useEffect(() => {
+  const fetchDeployments = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/deployments', {
+        credentials: 'include', // Ensure cookies are sent
+        cache: 'no-store' // Prevent caching
+      });
+      
+      if (response.status === 401) {
+        console.error("Authentication failed. Redirecting to login...");
+        window.location.href = '/login';
+        return;
+      }
+      
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: Failed to fetch deployments`);
+      }
+      
+      const data = await response.json();
+      // Process deployment data
+      processDeploymentData(data);
+    } catch (err) {
+      console.error("Error fetching deployments:", err);
+      setError(err instanceof Error ? err.message : "Failed to load deployment data");
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  fetchDeployments();
+}, []);
 
   // Process deployment data into stats
   const processDeploymentData = (data: DeploymentData[]) => {

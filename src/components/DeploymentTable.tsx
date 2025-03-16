@@ -33,50 +33,59 @@ export default function DeploymentTable({ allowEdit = false }: DeploymentTablePr
 
   // Function to fetch deployments
   const fetchDeployments = useCallback(async (showLoading = true) => {
-    try {
-      if (showLoading) {
-        setLoading(true);
-      }
-
-      if (!showLoading) {
-        setIsRefreshing(true);
-      }
-
-      const response = await fetch("/api/deployments");
-
-      if (!response.ok) {
-        throw new Error(`Error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log("Deployments from API:", data);
-      setDeployments(data);
-
-      // Extract all unique column names from the deployments
-      if (data.length > 0) {
-        const columns = getColumnHeaders(data);
-        setAllColumns(columns);
-      }
-
-      setError(null);
-    } catch (err) {
-      if (showLoading) {
-        setError("Failed to load deployment data");
-      } else {
-        setError("Failed to refresh data. Try again later.");
-        // Clear error after 3 seconds
-        setTimeout(() => setError(null), 3000);
-      }
-      console.error("Error fetching deployments:", err);
-    } finally {
-      if (showLoading) {
-        setLoading(false);
-      }
-      if (!showLoading) {
-        setIsRefreshing(false);
-      }
+  try {
+    if (showLoading) {
+      setLoading(true);
     }
-  }, []);
+
+    if (!showLoading) {
+      setIsRefreshing(true);
+    }
+
+    const response = await fetch("/api/deployments", {
+      credentials: 'include',
+      cache: 'no-store'
+    });
+
+    if (response.status === 401) {
+      console.error("Authentication failed. Redirecting to login...");
+      window.location.href = '/login';
+      return;
+    }
+
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log("Deployments from API:", data);
+    setDeployments(data);
+
+    // Extract all unique column names from the deployments
+    if (data.length > 0) {
+      const columns = getColumnHeaders(data);
+      setAllColumns(columns);
+    }
+
+    setError(null);
+  } catch (err) {
+    if (showLoading) {
+      setError("Failed to load deployment data");
+    } else {
+      setError("Failed to refresh data. Try again later.");
+      // Clear error after 3 seconds
+      setTimeout(() => setError(null), 3000);
+    }
+    console.error("Error fetching deployments:", err);
+  } finally {
+    if (showLoading) {
+      setLoading(false);
+    }
+    if (!showLoading) {
+      setIsRefreshing(false);
+    }
+  }
+}, []);
 
   // Initial data load
   useEffect(() => {

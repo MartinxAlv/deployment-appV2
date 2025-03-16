@@ -95,27 +95,29 @@ const authOptions = {
     },
   },
   callbacks: {
-    async session({ session, token }: { session: Session; token: JWT }) {
-      console.log("Session Callback - Token Data:", token);
-      
-      if (session.user) {
-        session.user.id = token.id as string;
-        session.user.role = token.role as string; // Ensure role is stored in session
-        session.user.name = token.name as string; // Add name to session
-      }
-      
-      return session;
-    },
-    async jwt({ token, user }: { token: JWT; user?: { id: string; role?: string; name?: string } }) {
-      console.log("JWT Callback - User Data:", user);
-      if (user) {
-        token.id = user.id;
-        token.role = user.role; // Store role in token
-        token.name = user.name; // Store name in token
-      }
-      return token;
-    },
+  async session({ session, token }: { session: Session; token: JWT }) {
+    console.log("Session callback - Token:", token);
+    
+    if (session.user) {
+      session.user.id = token.id as string;
+      session.user.role = token.role as string;
+      session.user.name = token.name as string;
+    }
+    
+    return session;
   },
+  async jwt({ token, user }: { token: JWT; user?: any }) {
+    console.log("JWT callback - User:", user);
+    
+    if (user) {
+      token.id = user.id;
+      token.role = user.role;
+      token.name = user.name;
+    }
+    
+    return token;
+  },
+},
 };
 
 const handler = NextAuth(authOptions);

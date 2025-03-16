@@ -6,8 +6,8 @@ import { SessionProvider } from "next-auth/react";
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider 
-      // Force session refresh on window focus for better persistence
-      refetchInterval={0} 
+      // Improve session management
+      refetchInterval={5 * 60} // Refresh session every 5 minutes 
       refetchOnWindowFocus={true}
     >
       {children}

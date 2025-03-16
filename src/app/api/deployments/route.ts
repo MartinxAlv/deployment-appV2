@@ -3,24 +3,25 @@ import { NextResponse } from 'next/server';
 import { deploymentSheetService, DeploymentData } from '@/lib/googleSheetsService';
 import { getServerSession } from 'next-auth';
 
-// GET handler to fetch all deployments (unchanged)
 export async function GET() {
   try {
-    // Check authentication (optional but recommended)
+    // Check authentication with more robust error handling
     const session = await getServerSession();
     
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      console.error('Authentication failed: No session found');
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
+    
+    // Log successful authentication for debugging
+    console.log(`Authenticated request from ${session.user.email}`);
     
     const deployments = await deploymentSheetService.getAllDeployments();
     
-    // Add debug information
     console.log(`Retrieved ${deployments.length} deployments from Google Sheets`);
     
-    // Ensure each deployment has the ID field properly set
+    // Enhance deployments with consistent ID field
     const enhancedDeployments = deployments.map(deployment => {
-      // If there's no id but there is a Deployment ID, use that as the id
       if (!deployment.id && deployment["Deployment ID"]) {
         deployment.id = deployment["Deployment ID"];
       }
@@ -31,8 +32,10 @@ export async function GET() {
     
   } catch (error) {
     console.error('Error fetching deployments:', error);
+    // Provide more detailed error info
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Failed to fetch deployments' }, 
+      { error: `Failed to fetch deployments: ${errorMessage}` }, 
       { status: 500 }
     );
   }
