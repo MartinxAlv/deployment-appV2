@@ -49,8 +49,8 @@ const authOptions: NextAuthOptions = {
         return {
           id: data.user.id,
           email: data.user.email,
-          role: userData.role,
-          name: userData.name,
+          role: userData.role as string,
+          name: userData.name as string,
         };
       },
     }),
@@ -122,4 +122,4 @@ const authOptions: NextAuthOptions = {
 };
 
 const handler = NextAuth(authOptions);
-export { handler as GET, handler as POST };
+export { handler as GET, handler as POST, authOptions };

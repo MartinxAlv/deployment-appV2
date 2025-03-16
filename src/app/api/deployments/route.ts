@@ -2,11 +2,12 @@
 import { NextResponse } from 'next/server';
 import { deploymentSheetService, DeploymentData } from '@/lib/googleSheetsService';
 import { getServerSession } from 'next-auth';
+import { authOptions } from '../auth/[...nextauth]/route';
 
 export async function GET() {
   try {
     // Check authentication with more robust error handling
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
     
     if (!session?.user) {
       console.error('Authentication failed: No session found');
@@ -41,11 +42,11 @@ export async function GET() {
   }
 }
 
-// POST handler to add a new deployment (unchanged)
+// POST handler to add a new deployment
 export async function POST(request: Request) {
   try {
     // Check authentication
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
     
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -94,7 +95,7 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     // Check authentication
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
     
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
