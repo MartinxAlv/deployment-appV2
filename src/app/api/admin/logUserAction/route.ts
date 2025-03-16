@@ -2,11 +2,12 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from "@/lib/supabaseClient";
 import { getServerSession } from 'next-auth';
+import { authOptions } from '../../auth/[...nextauth]/options';
 
 export async function POST(request: Request) {
   try {
     // Check authentication
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
     
     if (!session?.user) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });

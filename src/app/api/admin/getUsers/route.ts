@@ -1,9 +1,18 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabaseClient"; // Ensure correct import
+import { supabaseAdmin } from "@/lib/supabaseClient";
+import { getServerSession } from 'next-auth';
+import { authOptions } from '../../auth/[...nextauth]/options';
 
 // ✅ Fetch users from Supabase
 export async function GET() {
   try {
+    // Check authentication
+    const session = await getServerSession(authOptions);
+    
+    if (!session?.user) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+
     const { data, error } = await supabaseAdmin.from("users").select("*");
 
     if (error) {

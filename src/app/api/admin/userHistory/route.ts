@@ -2,12 +2,13 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from "@/lib/supabaseClient";
 import { getServerSession } from 'next-auth';
+import { authOptions } from '../../auth/[...nextauth]/options';
 
 // GET - Fetch user action history
 export async function GET(request: Request) {
   try {
     // Check authentication and admin permissions
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
     
     if (!session?.user) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
@@ -63,7 +64,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     // Check authentication and admin permissions
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
     
     if (!session?.user) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
