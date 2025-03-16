@@ -1,5 +1,5 @@
 // src/app/api/auth/[...nextauth]/route.ts
-import NextAuth from "next-auth";
+import NextAuth, { User } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { supabase } from "@/lib/supabaseClient";
 import { JWT } from "next-auth/jwt";
@@ -106,8 +106,8 @@ const authOptions = {
     
     return session;
   },
-  async jwt({ token, user }: { token: JWT; user?: any }) {
-    console.log("JWT callback - User:", user);
+async jwt({ token, user }: { token: JWT; user?: User }) {
+        console.log("JWT callback - User:", user);
     
     if (user) {
       token.id = user.id;
